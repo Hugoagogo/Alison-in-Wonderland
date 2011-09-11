@@ -42,11 +42,9 @@ def update_lightmap(room):
                 for x in range(util.clip_to_range(bx-l,0,room.x),util.clip_to_range(bx+l,0,room.y)):
                     for y in range(util.clip_to_range(by-l,0,room.y),util.clip_to_range(bx+l,0,room.y)):
                         if True or bx!=x or by!=y:
-                            if check_ray(bx,by,x,y,room):
-                                try:
-                                    room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**0.5))))
-                                except:
-                                    pass
+                            ray = check_ray(bx,by,x,y,room)
+                            if not ray == False:
+                                room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**0.4+1))))*ray
                         
     for bx in range(room.x):
         for by in range(room.y):
@@ -54,19 +52,32 @@ def update_lightmap(room):
     pass
                 
 def check_ray(x1,y1,x2,y2,room):
-    if x1 != x2:
-        m = float(y1-y2)/(x1-x2)
-        for sx in range(x1,x2,math.copysign(1,x2-x1)):
-            sy1 = int(math.ceil(m*(sx-x1) + y1))
-            sy2 = int(math.floor(m*(sx-x1) + y1))
-            if room[sx,sy1].material != None and room[sx,sy1].material.solid and room[sx,sy2].material != None and room[sx,sy2].material.solid and sx != x1:
+    opacity = 1
+    if x1 == x2:
+        y_step_dir = int(math.copysign(1,y2-y1))
+        while y1 != y2:
+            y1 += y_step_dir
+            if room[x1,y1].material != None and room[x1,y1].material.opacity == 1 and y1 != y2:
                 return False
-            
+            elif y1 != y2:
+                opacity *= room[x1,y1].material.opacity
     else:
-        for sy in range(y1,y2,math.copysign(1,y2-y1)):
-            if room[x1,sy].material != None and room[x1,sy].material.solid and sy!= y1:
+        m = abs((y1-y2)/float(x1-x2))
+        x_step_dir = int(math.copysign(1,x2-x1))
+        y_step_dir = int(math.copysign(1,y2-y1))
+        count = m
+        while y1 != y2 or x1 != x2:
+            if count > 1:
+                count -= 1
+                y1 += y_step_dir
+            else:
+                count += m
+                x1 += x_step_dir
+            if room[x1,y1].material != None and room[x1,y1].material.opacity == 1 and (y1 != y2 and x1 != x2):
                 return False
-    return True
+            elif (y1 != y2 and x1 != x2):
+                opacity *= room[x1,y1].material.opacity
+    return opacity
 
 class MainWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
