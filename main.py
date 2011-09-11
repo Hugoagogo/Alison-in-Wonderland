@@ -20,9 +20,9 @@ def construct_room(room_filename,materials):
     name = room_file.readline().strip()
     print name
     room = util.Array2D(60,45)
-    for lineno in range(ROOM_Y):
+    for lineno in range(room.y):
         line = room_file.readline().strip("\n")
-        for colno in range(ROOM_X):
+        for colno in range(room.x):
             mat = line[colno]
             if mat in materials:
                 mat = materials[mat]
@@ -39,8 +39,8 @@ def update_lightmap(room):
             if block.material != None and block.material.light:
                 l = block.material.light
                 block.base_light+=l
-                for x in range(util.clip_to_range(bx-l,0,room.x),util.clip_to_range(bx+l,0,room.y)):
-                    for y in range(util.clip_to_range(by-l,0,room.y),util.clip_to_range(bx+l,0,room.y)):
+                for x in range(util.clip_to_range(bx-l,0,room.x),util.clip_to_range(bx+l,0,room.x)):
+                    for y in range(util.clip_to_range(by-l,0,room.y),util.clip_to_range(by+l,0,room.y)):
                         if True or bx!=x or by!=y:
                             if check_ray(bx,by,x,y,room):
                                 room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**0.4+1))))
