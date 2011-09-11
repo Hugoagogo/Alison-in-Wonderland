@@ -42,9 +42,8 @@ def update_lightmap(room):
                 for x in range(util.clip_to_range(bx-l,0,room.x),util.clip_to_range(bx+l,0,room.y)):
                     for y in range(util.clip_to_range(by-l,0,room.y),util.clip_to_range(bx+l,0,room.y)):
                         if True or bx!=x or by!=y:
-                            ray = check_ray(bx,by,x,y,room)
-                            if not ray == False:
-                                room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**0.4+1))))*ray
+                            if check_ray(bx,by,x,y,room):
+                                room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**0.4+1))))
                         
     for bx in range(room.x):
         for by in range(room.y):
@@ -57,10 +56,8 @@ def check_ray(x1,y1,x2,y2,room):
         y_step_dir = int(math.copysign(1,y2-y1))
         while y1 != y2:
             y1 += y_step_dir
-            if room[x1,y1].material != None and room[x1,y1].material.opacity == 1 and y1 != y2:
+            if room[x1,y1].material != None and room[x1,y1].material.transparent == 0 and y1 != y2:
                 return False
-            elif y1 != y2:
-                opacity *= room[x1,y1].material.opacity
     else:
         m = abs((y1-y2)/float(x1-x2))
         x_step_dir = int(math.copysign(1,x2-x1))
@@ -73,11 +70,9 @@ def check_ray(x1,y1,x2,y2,room):
             else:
                 count += m
                 x1 += x_step_dir
-            if room[x1,y1].material != None and room[x1,y1].material.opacity == 1 and (y1 != y2 and x1 != x2):
+            if room[x1,y1].material != None and room[x1,y1].material.transparent == 0 and (y1 != y2 and x1 != x2):
                 return False
-            elif (y1 != y2 and x1 != x2):
-                opacity *= room[x1,y1].material.opacity
-    return opacity
+    return True
 
 class MainWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
@@ -144,12 +139,12 @@ class GameState(State):
             
 
 class Material(object):
-    def __init__(self,name,visible=True,solid=False,colour=None,opacity=255,texture=None,light=0,layer=-1):
+    def __init__(self,name,visible=True,solid=False,colour=None,texture=None,transparent=False,light=0,layer=-1):
         self.visible=visible
         self.solid = solid
         self.colour = colour
-        self.opacity = opacity
         self.light = light
+        self.transparent = transparent
         if texture:
             self.texture = pyglet.image.load(os.path.abspath(os.path.join("res","tiles",texture+".png"))).get_texture()
         else:

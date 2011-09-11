@@ -4,7 +4,6 @@
     solid: 1
     colour: [180,120,80]
     texture: noise
-    opacity: 100
     layer: -1
     
 "*":
@@ -13,7 +12,6 @@
     solid: 1
     colour: [255,200,0]
     texture: noise
-    opacity: 100
     layer: -1
     light: 300
     
@@ -23,5 +21,5 @@
     solid: 1
     colour: [240,255,255]
     texture: border1
-    opacity: 100
+    transparent: 1
     layer: -1
