@@ -56,11 +56,17 @@ def update_lightmap(room):
 def check_ray(x1,y1,x2,y2,room):
     if x1 != x2:
         m = float(y1-y2)/(x1-x2)
+        lsy1 = None
+        lsy2 = None
         for sx in range(x1,x2,math.copysign(1,x2-x1)):
             sy1 = int(math.ceil(m*(sx-x1) + y1))
             sy2 = int(math.floor(m*(sx-x1) + y1))
-            if room[sx,sy1].material != None and room[sx,sy1].material.solid and room[sx,sy2].material != None and room[sx,sy2].material.solid and sx != x1:
-                return False
+            if lsy1 == None and lsy2 == None:
+                lsy1, lsy2 = sy1, sy2
+            for dy1, dy2 in zip(range(sy1,lsy1,math.copysign(1,lsy1-sy1)),range(sy2,lsy2,math.copysign(1,lsy2-sy2))):
+                if room[sx,dy1].material != None and room[sx,dy1].material.solid and room[sx,dy2].material != None and room[sx,dy2].material.solid and sx != x1:
+                    return False
+                
             
     else:
         for sy in range(y1,y2,math.copysign(1,y2-y1)):
