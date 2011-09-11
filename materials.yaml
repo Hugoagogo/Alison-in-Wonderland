@@ -9,17 +9,31 @@
 "*":
     name: sun
     visible: 1
-    solid: 1
+    solid: 0
+    transparent: 1
+    transparent: 0
     colour: [255,200,0]
     texture: noise
     layer: -1
-    light: 300
+    light: 200
+    light_dropoff: 0.2
     
 "G":
     name: glass
     visible: 1
     solid: 1
-    colour: [240,255,255]
+    colour: [175,240,240]
     texture: border1
     transparent: 1
     layer: -1
+    
+"M":
+    name: Mushroom
+    visible: 1
+    solid: 1
+    colour: [50,240,240]
+    texture: mushroom
+    transparent: 1
+    layer: -1
+    light: 60
+    light_dropoff: 0.45

@@ -43,7 +43,10 @@ def update_lightmap(room):
                     for y in range(util.clip_to_range(by-l,0,room.y),util.clip_to_range(by+l,0,room.y)):
                         if True or bx!=x or by!=y:
                             if check_ray(bx,by,x,y,room):
-                                room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**0.4+1))))
+                                try:
+                                    room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**block.material.light_dropoff))))
+                                except ZeroDivisionError:
+                                    pass
                         
     for bx in range(room.x):
         for by in range(room.y):
@@ -51,7 +54,8 @@ def update_lightmap(room):
     pass
                 
 def check_ray(x1,y1,x2,y2,room):
-    opacity = 1
+    #print "============================================================"
+    iy = y1
     if x1 == x2:
         y_step_dir = int(math.copysign(1,y2-y1))
         while y1 != y2:
@@ -70,7 +74,7 @@ def check_ray(x1,y1,x2,y2,room):
             else:
                 count += m
                 x1 += x_step_dir
-            if room[x1,y1].material != None and room[x1,y1].material.transparent == 0 and (y1 != y2 and x1 != x2):
+            if room[x1,y1].material != None and room[x1,y1].material.transparent == 0 and (y1 != y2 or iy == y1) and x1 != x2:
                 return False
     return True
 
@@ -125,25 +129,33 @@ class GameState(State):
     def __init__(self):
         materials = load_materials("materials.yaml")
         self.room = construct_room("level.lvl",materials)
+        self.bg = pyglet.image.load(os.path.abspath(os.path.join("res","backgrounds","above1.png"))).get_texture()
         update_lightmap(self.room)
         
     def on_draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        gl.glColor4ub(*[255,255,255,255])
+        self.bg.blit(0,0)
         for x in range(ROOM_X):
             for y in range(ROOM_Y):
                 square = self.room[x,y]
-                if square.material and square.material.texture != None:
-                    gl.glColor4ub(*square.material.colour+[square.base_light])
+                if square.material and square.material.visible and square.material.texture != None:
+                    gl.glColor3ub(*square.material.colour)
                     square.material.texture.blit(x*16,y*16)
+                gl.glColor4ub(*[0,0,0,255-square.base_light])
+                gl.glRecti(x*16,y*16,x*16+16,y*16+16)
+                    
+                    
         
             
 
 class Material(object):
-    def __init__(self,name,visible=True,solid=False,colour=None,texture=None,transparent=False,light=0,layer=-1):
+    def __init__(self,name,visible=True,solid=False,colour=None,texture=None,transparent=False,light=0,light_dropoff=0.5,layer=-1):
         self.visible=visible
         self.solid = solid
         self.colour = colour
         self.light = light
+        self.light_dropoff = light_dropoff
         self.transparent = transparent
         if texture:
             self.texture = pyglet.image.load(os.path.abspath(os.path.join("res","tiles",texture+".png"))).get_texture()
