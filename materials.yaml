@@ -16,3 +16,12 @@
     opacity: 100
     layer: -1
     light: 200
+    
+"G":
+    name: glass
+    visible: 1
+    solid: 1
+    colour: [240,255,255]
+    texture: border1
+    opacity: 100
+    layer: -1

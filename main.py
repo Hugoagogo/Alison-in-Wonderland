@@ -41,22 +41,31 @@ def update_lightmap(room):
                 block.base_light+=l
                 for x in range(util.clip_to_range(bx-l,0,room.x),util.clip_to_range(bx+l,0,room.y)):
                     for y in range(util.clip_to_range(by-l,0,room.y),util.clip_to_range(bx+l,0,room.y)):
-                        if x != bx:
+                        if True or bx!=x or by!=y:
                             if check_ray(bx,by,x,y,room):
-                                room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**0.5))))
+                                try:
+                                    room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**0.5))))
+                                except:
+                                    pass
                         
     for bx in range(room.x):
         for by in range(room.y):
-            room[bx,by].base_light = min(255,room[bx,by].base_light)
+            room[bx,by].base_light = util.clip_to_range(room[bx,by].base_light,0,255)
     pass
                 
 def check_ray(x1,y1,x2,y2,room):
-    m = float(y1-y2)/(x1-x2)
-    for sx in range(x1,x2,math.copysign(1,x2-x1)):
-        sy1 = int(math.ceil(m*(sx-x1) + y1))
-        sy2 = int(math.floor(m*(sx-x1) + y1))
-        if room[sx,sy1].material != None and room[sx,sy1].material.solid and room[sx,sy2].material != None and room[sx,sy2].material.solid and sx!=x1:
-            return False
+    if x1 != x2:
+        m = float(y1-y2)/(x1-x2)
+        for sx in range(x1,x2,math.copysign(1,x2-x1)):
+            sy1 = int(math.ceil(m*(sx-x1) + y1))
+            sy2 = int(math.floor(m*(sx-x1) + y1))
+            if room[sx,sy1].material != None and room[sx,sy1].material.solid and room[sx,sy2].material != None and room[sx,sy2].material.solid and sx != x1:
+                return False
+            
+    else:
+        for sy in range(y1,y2,math.copysign(1,y2-y1)):
+            if room[x1,sy].material != None and room[x1,sy].material.solid and sy!= y1:
+                return False
     return True
 
 class MainWindow(pyglet.window.Window):
