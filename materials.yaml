@@ -1,0 +1,7 @@
+#:
+    name:dirt
+    visible:1
+    solid:1
+    colour:(180,120,80)
+    opacity:255
+    layer=-1
