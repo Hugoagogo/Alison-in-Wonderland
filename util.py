@@ -10,3 +10,10 @@ class Array2D(object):
     def __setitem__(self,key,value):
         x,y = key
         self.data[y][x] = value
+        
+def clip_to_range(val,min,max):
+    if val < min:
+        return min
+    elif val > max:
+        return max
+    return val
