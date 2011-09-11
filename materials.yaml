@@ -1,7 +1,18 @@
-#:
-    name:dirt
-    visible:1
-    solid:1
-    colour:(180,120,80)
-    opacity:255
-    layer=-1
+"#":
+    name: dirt
+    visible: 1
+    solid: 1
+    colour: (180,120,80)
+    texture: noise
+    opacity: 100
+    layer: -1
+    
+"*":
+    name: sun
+    visible: 1
+    solid: 1
+    colour: (180,120,80)
+    texture: noise
+    opacity: 100
+    layer: -1
+    light: 255

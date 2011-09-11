@@ -1,51 +1,117 @@
-import pyglet, yaml
+import pyglet, yaml, util
 from pyglet import gl
 from pyglet.window import key
+import os
+
+ROOM_X = 60
+ROOM_Y = 45
 
 def load_materials(material_filename):
-    raw_materials = yaml.load(material_filename)
+    f = open(material_filename)
+    raw_materials = yaml.load(f.read())
+    f.close()
     materials = {}
-    for key, mat in materials.items():
-        materials[key] = Material(**materials)
+    for key, mat in raw_materials.items():
+        materials[key] = Material(**mat)
     return materials
 
 def construct_room(room_filename,materials):
     room_file = open(room_filename,"rb")
     name = room_file.readline().strip()
     print name
-    room = Array2D(60,45)
-    for lineno in range(45):
+    room = util.Array2D(60,45)
+    for lineno in range(ROOM_Y):
         line = room_file.readline().strip("\n")
-        for colno in range(60):
-            tile = Block(line[colno])
+        for colno in range(ROOM_X):
+            mat = line[colno]
+            if mat in materials:
+                mat = materials[mat]
+            else: mat = None
+            tile = Block(mat)
             room[colno,lineno] = tile
+    room.data.reverse()
+    return room
 
+class MainWindow(pyglet.window.Window):
+    def __init__(self,*args, **kwargs):
+        kwargs['width'] = 960
+        kwargs['height'] = 720
+        pyglet.window.Window.__init__(self, *args, **kwargs)
+        self.set_exclusive_keyboard(False)
+        pyglet.clock.schedule_interval(lambda _: None, 0)
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
+        
+        self.states = []
+    
+    def push_state(self,state):
+        state.parent = self
+        if len(self.states):
+            self.pop_handlers()
+            self.states[-1].deactivate()
+        self.states.append(state)
+        self.states[-1].activate()
+        self.push_handlers(self.states[-1])
+    def pop_state(self,state=None):
+        self.pop_handlers()
+        self.states[-1].deactivate()
+        self.states.pop(-1)
+        if state != None:
+            state.parent = self
+            self.states.append(state)
+        if len(self.states):
+            self.push_handlers(self.states[-1])
+            self.states[-1].activate()
+        else:
+            quit()
+    
+    #def __getattr__(self,key):
+    #    if key.beginswith("on_") and len(self.states) and hasattr(self.states[-1],key):
+    #        return self.states[-1].key
+    #    else:
+    #        return pyglet.window.Window.__getattr__(key)
+            
+class State(object):
+    def activate(self):
+        pass
+    def deactivate(self):
+        pass
+            
+class GameState(State):
+    def __init__(self):
+        materials = load_materials("materials.yaml")
+        self.room = construct_room("level.lvl",materials)
+        
+    def on_draw(self):
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        gl.glColor4ub(*[255,0,0,180])
+        for x in range(ROOM_X):
+            for y in range(ROOM_Y):
+                if self.room[x,y].material and self.room[x,y].material.texture != None:
+                    self.room[x,y].material.texture.blit(x*16,y*16)
+        
+            
+
+class Material(object):
+    def __init__(self,name,visible=True,solid=False,colour=None,opacity=255,texture=None,layer=-1):
+        self.visible=visible
+        self.solid = solid
+        self.colour = colour
+        self.opacity = opacity
+        print texture
+        if texture:
+            self.texture = pyglet.image.load(os.path.abspath(os.path.join("res","tiles",texture+".png"))).get_texture()
+        else:
+            self.texture = None
+        
 class Block(object):
     def __init__(self, material=None):
         self.material = material
         self.base_light = 0
         self.dyn_light = 0
-        
-class Material(object):
-    def __init__(self,visisble=True,solid=False,colour=None,opacity=255,texture=None,layer=-1):
-        self.visible=visible
-        self.solid = solid
-        self.colour = colour
-        self.opacity = opacity
-        self.texture = texture
-    
-class Array2D(object):
-    def __init__(self,x,y):
-        self.x = x
-        self.y = y
-        self.data = [[None]*x for py in range(y)]
-    def __getitem__(self,key):
-        x,y = key
-        return self.data[y][x]
-        
-    def __setitem__(self,key,value):
-        x,y = key
-        self.data[y][x] = value
 
-#materials = load_materials("materials.yaml")
-#construct_room("level.lvl",materials)
+window = MainWindow()
+window.push_state(GameState())
+pyglet.app.run()
