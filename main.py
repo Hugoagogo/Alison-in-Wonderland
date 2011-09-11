@@ -44,7 +44,7 @@ def update_lightmap(room):
                         if True or bx!=x or by!=y:
                             ray = check_ray(bx,by,x,y,room)
                             if not ray == False:
-                                room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**0.4+1))))*ray
+                                room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**0.4+1)))*ray)
                         
     for bx in range(room.x):
         for by in range(room.y):
@@ -57,10 +57,11 @@ def check_ray(x1,y1,x2,y2,room):
         y_step_dir = int(math.copysign(1,y2-y1))
         while y1 != y2:
             y1 += y_step_dir
-            if room[x1,y1].material != None and room[x1,y1].material.opacity == 1 and y1 != y2:
-                return False
-            elif y1 != y2:
-                opacity *= room[x1,y1].material.opacity
+            if room[x1,y1].material != None and y1 != y2:
+                if room[x1,y1].material.opacity == 1:
+                    return False
+                else:
+                    opacity *= room[x1,y1].material.opacity
     else:
         m = abs((y1-y2)/float(x1-x2))
         x_step_dir = int(math.copysign(1,x2-x1))
@@ -73,10 +74,11 @@ def check_ray(x1,y1,x2,y2,room):
             else:
                 count += m
                 x1 += x_step_dir
-            if room[x1,y1].material != None and room[x1,y1].material.opacity == 1 and (y1 != y2 and x1 != x2):
-                return False
-            elif (y1 != y2 and x1 != x2):
-                opacity *= room[x1,y1].material.opacity
+            if room[x1,y1].material != None and (y1 != y2 and x1 != x2):
+                if room[x1,y1].material.opacity == 1:
+                    return False
+                else:
+                    opacity *= room[x1,y1].material.opacity
     return opacity
 
 class MainWindow(pyglet.window.Window):
@@ -148,7 +150,7 @@ class Material(object):
         self.visible=visible
         self.solid = solid
         self.colour = colour
-        self.opacity = opacity
+        self.opacity = opacity/100.0
         self.light = light
         if texture:
             self.texture = pyglet.image.load(os.path.abspath(os.path.join("res","tiles",texture+".png"))).get_texture()
