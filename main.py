@@ -18,6 +18,7 @@ def load_materials(material_filename):
     materials = {}
     for key, mat in raw_materials.items():
         materials[key] = Material(**mat)
+        print "Loaded:",key
     return materials
 
 def construct_room(room_filename,materials):
@@ -51,12 +52,10 @@ def update_lightmap(room):
                                 try:
                                     room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**block.material.light_dropoff))))
                                 except ZeroDivisionError:
-                                    pass
-                        
+                                    pass                  
     for bx in range(room.x):
         for by in range(room.y):
             room[bx,by].base_light = util.clip_to_range(room[bx,by].base_light,0,255)
-    pass
                 
 def check_ray(x1,y1,x2,y2,room):
     #print "============================================================"
@@ -129,7 +128,7 @@ class MainWindow(pyglet.window.Window):
     #        return pyglet.window.Window.__getattr__(key)
 
 class Alison(object):
-    def __init__(self,keys,x=0,y=0):
+    def __init__(self,parent,x=0,y=0):
         frames = []
         path = os.path.join("res","alison","fly")
         for file in sorted(os.listdir(path)):
@@ -143,28 +142,46 @@ class Alison(object):
         self.sprite = pyglet.sprite.Sprite(self.image_left,x,y)
         self.sprite.set_position(x,y)
         
-        self.keys = keys
+        self.parent = parent
         
         self.vx = self.vy = 0
         self.dir = 1
         
+        
+
+    def _top(self):
+        return self.sprite.y + self.sprite.height/2
+    top = property(_top)
+    def _down(self):
+        return self.sprite.y - self.sprite.height/2
+    down = property(_down)
+    def _left(self):
+        return self.sprite.x - self.sprite.width/2
+    left = property(_left)
+    def _right(self):
+        return self.sprite.y + self.sprite.width/2
+    right = property(_right)
+    
+    #def space_below(self):
+    #    left , right = int(math.floor(self.left/16)), int(math.ceil(self.right/16))
+    #    for x in range(left,right+1)
                 
     def update(self,dt):
-        if self.keys[PLAYER_UP]:
+        if self.parent.keys[PLAYER_UP]:
             self.vy += ACCEL*dt
-        elif self.keys[PLAYER_DOWN]:
+        elif self.parent.keys[PLAYER_DOWN]:
             self.vy -= ACCEL*dt
         else:
             if abs(self.vy) < math.copysign(FRICTION*dt,self.vy):
                 self.vy = 0
             else:
                 self.vy -= math.copysign(FRICTION*dt,self.vy)
-        if self.keys[PLAYER_LEFT]:
+        if self.parent.keys[PLAYER_LEFT]:
             if self.dir != 1:
                 self.dir = 1
                 self.sprite.image = self.image_left
             self.vx -= ACCEL*dt
-        elif self.keys[PLAYER_RIGHT]:
+        elif self.parent.keys[PLAYER_RIGHT]:
             if self.dir != 0:
                 self.dir = 0
                 self.sprite.image = self.image_right
@@ -176,7 +193,9 @@ class Alison(object):
                 self.vx -= math.copysign(FRICTION*dt,self.vx)
         self.vx = util.clip_to_range(self.vx,-MAX_SPEED,MAX_SPEED)
         self.vy = util.clip_to_range(self.vy,-MAX_SPEED,MAX_SPEED)
-        self.sprite.y += self.vy*dt
+        my = self.vy*dt
+        self.sprite.y += my
+        print my
         self.sprite.x += self.vx*dt
         
         
@@ -200,7 +219,7 @@ class GameState(State):
         
         self.keys = key.KeyStateHandler()
         
-        self.player = Alison(self.keys,250,320)
+        self.player = Alison(self,250,320)
         
     def activate(self):
         self.parent.push_handlers(self.keys)
@@ -221,10 +240,12 @@ class GameState(State):
                 square = self.room[x,y]
                 if square.material and square.material.visible and square.material.texture != None:
                     gl.glColor3ub(*square.material.colour)
+                    print square.material.name
                     square.material.texture.blit(x*16,y*16)
         
         gl.glColor4ub(*[255,255,255,255])
-        self.player.draw()        
+        self.player.draw()
+        print "HERE"
         
         for x in range(ROOM_X):
             for y in range(ROOM_Y):
@@ -238,6 +259,7 @@ class GameState(State):
 
 class Material(object):
     def __init__(self,name,visible=True,solid=False,colour=None,texture=None,transparent=False,light_ambient=0,light=0,light_dropoff=0.5,layer=-1):
+        self.name = name
         self.visible=visible
         self.solid = solid
         self.colour = colour
