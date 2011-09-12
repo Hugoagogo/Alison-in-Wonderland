@@ -7,7 +7,9 @@ from key_bindings import *
 ROOM_X = 60
 ROOM_Y = 45
 
-MOVE_SPEED = 100
+FRICTION = 800
+ACCEL = 800
+MAX_SPEED = 200
 
 def load_materials(material_filename):
     f = open(material_filename)
@@ -143,26 +145,41 @@ class Alison(object):
         
         self.keys = keys
         
-        self.vx = self.vy = self.dir = 0
+        self.vx = self.vy = 0
+        self.dir = 1
         
                 
     def update(self,dt):
-        print "updating"
-        print self.keys
         if self.keys[PLAYER_UP]:
-            self.sprite.y += MOVE_SPEED*dt
-        if self.keys[PLAYER_DOWN]:
-            self.sprite.y -= MOVE_SPEED*dt
+            self.vy += ACCEL*dt
+        elif self.keys[PLAYER_DOWN]:
+            self.vy -= ACCEL*dt
+        else:
+            if abs(self.vy) < math.copysign(FRICTION*dt,self.vy):
+                self.vy = 0
+            else:
+                self.vy -= math.copysign(FRICTION*dt,self.vy)
         if self.keys[PLAYER_LEFT]:
             if self.dir != 1:
                 self.dir = 1
                 self.sprite.image = self.image_left
-            self.sprite.x -= MOVE_SPEED*dt
-        if self.keys[PLAYER_RIGHT]:
+            self.vx -= ACCEL*dt
+        elif self.keys[PLAYER_RIGHT]:
             if self.dir != 0:
                 self.dir = 0
                 self.sprite.image = self.image_right
-            self.sprite.x += MOVE_SPEED*dt
+            self.vx += ACCEL*dt
+        else:
+            if abs(self.vx) < math.copysign(FRICTION*dt,self.vx):
+                self.vx = 0
+            else:
+                self.vx -= math.copysign(FRICTION*dt,self.vx)
+        self.vx = util.clip_to_range(self.vx,-MAX_SPEED,MAX_SPEED)
+        self.vy = util.clip_to_range(self.vy,-MAX_SPEED,MAX_SPEED)
+        self.sprite.y += self.vy*dt
+        self.sprite.x += self.vx*dt
+        
+        
     
     def draw(self):
         self.sprite.draw()
@@ -183,7 +200,7 @@ class GameState(State):
         
         self.keys = key.KeyStateHandler()
         
-        self.player = Alison(self.keys,200,300)
+        self.player = Alison(self.keys,250,320)
         
     def activate(self):
         self.parent.push_handlers(self.keys)
@@ -206,6 +223,7 @@ class GameState(State):
                     gl.glColor3ub(*square.material.colour)
                     square.material.texture.blit(x*16,y*16)
         
+        gl.glColor4ub(*[255,255,255,255])
         self.player.draw()        
         
         for x in range(ROOM_X):
