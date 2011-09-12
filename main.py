@@ -1,10 +1,13 @@
 import pyglet, yaml, util, math
 from pyglet import gl
-from pyglet.window import key
 import os
+
+from key_bindings import *
 
 ROOM_X = 60
 ROOM_Y = 45
+
+MOVE_SPEED = 100
 
 def load_materials(material_filename):
     f = open(material_filename)
@@ -84,7 +87,7 @@ class MainWindow(pyglet.window.Window):
         kwargs['height'] = 720
         pyglet.window.Window.__init__(self, *args, **kwargs)
         self.set_exclusive_keyboard(False)
-        pyglet.clock.schedule_interval(lambda _: None, 0)
+        pyglet.clock.schedule_interval(self.update, 1/60.0)
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
@@ -112,13 +115,59 @@ class MainWindow(pyglet.window.Window):
             self.states[-1].activate()
         else:
             quit()
+            
+    def update(self,dt):
+        if len(self.states) and hasattr(self.states[-1],"update"):
+            self.states[-1].update(dt)
     
     #def __getattr__(self,key):
     #    if key.beginswith("on_") and len(self.states) and hasattr(self.states[-1],key):
     #        return self.states[-1].key
     #    else:
     #        return pyglet.window.Window.__getattr__(key)
-            
+
+class Alison(object):
+    def __init__(self,keys,x=0,y=0):
+        frames = []
+        path = os.path.join("res","alison","fly")
+        for file in sorted(os.listdir(path)):
+            file = os.path.join(path,file)
+            if os.path.isfile(file):
+                frames.append(pyglet.image.AnimationFrame(pyglet.image.load(os.path.abspath(os.path.join(file))),0.05))
+                frames[-1].image.anchor_x = frames[-1].image.width/2
+        
+        self.image_right = pyglet.image.Animation(frames)
+        self.image_left = self.image_right.get_transform(flip_x=True)
+        self.sprite = pyglet.sprite.Sprite(self.image_left,x,y)
+        self.sprite.set_position(x,y)
+        
+        self.keys = keys
+        
+        self.vx = self.vy = self.dir = 0
+        
+                
+    def update(self,dt):
+        print "updating"
+        print self.keys
+        if self.keys[PLAYER_UP]:
+            self.sprite.y += MOVE_SPEED*dt
+        if self.keys[PLAYER_DOWN]:
+            self.sprite.y -= MOVE_SPEED*dt
+        if self.keys[PLAYER_LEFT]:
+            if self.dir != 1:
+                self.dir = 1
+                self.sprite.image = self.image_left
+            self.sprite.x -= MOVE_SPEED*dt
+        if self.keys[PLAYER_RIGHT]:
+            if self.dir != 0:
+                self.dir = 0
+                self.sprite.image = self.image_right
+            self.sprite.x += MOVE_SPEED*dt
+    
+    def draw(self):
+        self.sprite.draw()
+        
+
 class State(object):
     def activate(self):
         pass
@@ -132,30 +181,51 @@ class GameState(State):
         self.bg = pyglet.image.load(os.path.abspath(os.path.join("res","backgrounds","above1.png"))).get_texture()
         update_lightmap(self.room)
         
+        self.keys = key.KeyStateHandler()
+        
+        self.player = Alison(self.keys,200,300)
+        
+    def activate(self):
+        self.parent.push_handlers(self.keys)
+    def deactivate(self):
+        self.parent.pop_handlers()
+        
+        
+    def update(self,dt):
+        self.player.update(dt)
+        
     def on_draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         gl.glColor4ub(*[255,255,255,255])
         self.bg.blit(0,0)
+
         for x in range(ROOM_X):
             for y in range(ROOM_Y):
                 square = self.room[x,y]
                 if square.material and square.material.visible and square.material.texture != None:
                     gl.glColor3ub(*square.material.colour)
                     square.material.texture.blit(x*16,y*16)
-                gl.glColor4ub(*[0,0,0,255-square.base_light])
+        
+        self.player.draw()        
+        
+        for x in range(ROOM_X):
+            for y in range(ROOM_Y):
+                gl.glColor4ub(*[0,0,0,255-self.room[x,y].base_light])
                 gl.glRecti(x*16,y*16,x*16+16,y*16+16)
+                
                     
                     
         
             
 
 class Material(object):
-    def __init__(self,name,visible=True,solid=False,colour=None,texture=None,transparent=False,light=0,light_dropoff=0.5,layer=-1):
+    def __init__(self,name,visible=True,solid=False,colour=None,texture=None,transparent=False,light_ambient=0,light=0,light_dropoff=0.5,layer=-1):
         self.visible=visible
         self.solid = solid
         self.colour = colour
         self.light = light
         self.light_dropoff = light_dropoff
+        self.light_ambient = light_ambient
         self.transparent = transparent
         if texture:
             self.texture = pyglet.image.load(os.path.abspath(os.path.join("res","tiles",texture+".png"))).get_texture()
@@ -166,6 +236,8 @@ class Block(object):
     def __init__(self, material=None):
         self.material = material
         self.base_light = 0
+        if self.material != None:
+            self.base_light += material.light_ambient
         self.dyn_light = 0
 
 window = MainWindow()

@@ -5,6 +5,7 @@
     colour: [180,120,80]
     texture: noise
     layer: -1
+    light_ambient: 15
     
 "*":
     name: sun
