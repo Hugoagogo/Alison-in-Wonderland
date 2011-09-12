@@ -1,13 +1,3 @@
-T:
-    name: Mushroom
-    visible: 1
-    solid: 1
-    colour: [50,240,240]
-    texture: mushroom
-    transparent: 1
-    layer: -1
-    light: 60
-    light_dropoff: 0.45
 "#":
     name: dirt
     visible: 1
@@ -48,3 +38,14 @@ T:
     layer: -1
     light: 60
     light_dropoff: 0.45
+
+".":
+    name: Star
+    visible: 1
+    solid: 1
+    colour: [100,240,240]
+    texture: dot
+    transparent: 1
+    layer: -1
+    light: 90
+    light_dropoff: 0.4

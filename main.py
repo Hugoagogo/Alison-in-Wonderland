@@ -11,6 +11,8 @@ FRICTION = 800
 ACCEL = 800
 MAX_SPEED = 200
 
+range = xrange
+
 def load_materials(material_filename):
     f = open(material_filename)
     raw_materials = yaml.load(f.read())
@@ -130,12 +132,13 @@ class MainWindow(pyglet.window.Window):
 class Alison(object):
     def __init__(self,parent,x=0,y=0):
         frames = []
-        path = os.path.join("res","alison","fly")
+        path = os.path.join("res","alison","walk")
         for file in sorted(os.listdir(path)):
             file = os.path.join(path,file)
             if os.path.isfile(file):
                 frames.append(pyglet.image.AnimationFrame(pyglet.image.load(os.path.abspath(os.path.join(file))),0.05))
                 frames[-1].image.anchor_x = frames[-1].image.width/2
+                frames[-1].image.anchor_y = frames[-1].image.height/2
         
         self.image_right = pyglet.image.Animation(frames)
         self.image_left = self.image_right.get_transform(flip_x=True)
@@ -146,25 +149,6 @@ class Alison(object):
         
         self.vx = self.vy = 0
         self.dir = 1
-        
-        
-
-    def _top(self):
-        return self.sprite.y + self.sprite.height/2
-    top = property(_top)
-    def _down(self):
-        return self.sprite.y - self.sprite.height/2
-    down = property(_down)
-    def _left(self):
-        return self.sprite.x - self.sprite.width/2
-    left = property(_left)
-    def _right(self):
-        return self.sprite.y + self.sprite.width/2
-    right = property(_right)
-    
-    #def space_below(self):
-    #    left , right = int(math.floor(self.left/16)), int(math.ceil(self.right/16))
-    #    for x in range(left,right+1)
                 
     def update(self,dt):
         if self.parent.keys[PLAYER_UP]:
@@ -193,9 +177,7 @@ class Alison(object):
                 self.vx -= math.copysign(FRICTION*dt,self.vx)
         self.vx = util.clip_to_range(self.vx,-MAX_SPEED,MAX_SPEED)
         self.vy = util.clip_to_range(self.vy,-MAX_SPEED,MAX_SPEED)
-        my = self.vy*dt
-        self.sprite.y += my
-        print my
+        self.sprite.y += self.vy*dt
         self.sprite.x += self.vx*dt
         
         
@@ -240,22 +222,16 @@ class GameState(State):
                 square = self.room[x,y]
                 if square.material and square.material.visible and square.material.texture != None:
                     gl.glColor3ub(*square.material.colour)
-                    print square.material.name
                     square.material.texture.blit(x*16,y*16)
         
         gl.glColor4ub(*[255,255,255,255])
         self.player.draw()
-        print "HERE"
         
         for x in range(ROOM_X):
             for y in range(ROOM_Y):
                 gl.glColor4ub(*[0,0,0,255-self.room[x,y].base_light])
                 gl.glRecti(x*16,y*16,x*16+16,y*16+16)
                 
-                    
-                    
-        
-            
 
 class Material(object):
     def __init__(self,name,visible=True,solid=False,colour=None,texture=None,transparent=False,light_ambient=0,light=0,light_dropoff=0.5,layer=-1):
