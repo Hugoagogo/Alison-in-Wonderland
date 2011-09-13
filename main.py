@@ -10,11 +10,13 @@ SCREEN_Y = 720
 ROOM_X = 60
 ROOM_Y = 45
 
-FRICTION = .8
-ACCEL = 4
+X_FRICTION = .7
+ACCEL = 3
 JUMP = 10
 GRAVITY = 3
-MAX_SPEED = 12
+X_MAX_SPEED = 8
+Y_MAX_SPEED = 15
+JUMP_TIME = 8
 
 range = xrange
 
@@ -142,6 +144,7 @@ class Alison(object):
             file = os.path.join(path,file)
             if os.path.isfile(file):
                 frames.append(pyglet.image.AnimationFrame(pyglet.image.load(os.path.abspath(os.path.join(file))),0.1))
+                frames[-1].image.anchor_x = frames[-1].image.width/2
         
         self.image_right = pyglet.image.Animation(frames)
         self.image_left = self.image_right.get_transform(flip_x=True)
@@ -150,7 +153,8 @@ class Alison(object):
         
         self.parent = parent
         
-        self.vx = self.vy = 0
+        self.vx = self.vy = self.cooldown_jump = 0
+        self.jumping = 0
         self.dir = 1
     
     def _up(self):
@@ -160,10 +164,10 @@ class Alison(object):
         return self.sprite.y
     down = property(_down)
     def _left(self):
-        return self.sprite.x
+        return self.sprite.x - self.sprite.width/2
     left = property(_left)
     def _right(self):
-        return self.sprite.x + self.sprite.width
+        return self.sprite.x + self.sprite.width/2
     right = property(_right)
     #
     #def block_below(self):
@@ -173,16 +177,23 @@ class Alison(object):
     #            return y+2
     #    return None
     
-    def jump(self):
-        self.vy = JUMP
-    
     def update(self,dt):
-        #if self.parent.keys[PLAYER_UP]:
+        if not self.cooldown_jump and self.parent.keys[PLAYER_JUMP]:
+            self.cooldown_jump = 1
+            self.jumping = JUMP_TIME
+        
+        if self.jumping:
+            if self.parent.keys[PLAYER_JUMP]:
+                self.vy += ACCEL*2
+                self.jumping -= 1
+            else:
+                self.jumping = 0
+                
+            
         #    self.vy += ACCEL
         #elif self.parent.keys[PLAYER_DOWN]:
         #    self.vy -= ACCEL
         #else:
-        self.vy *= FRICTION
         self.vy -= GRAVITY
         if self.parent.keys[PLAYER_LEFT]:
             if self.dir != 1:
@@ -195,10 +206,10 @@ class Alison(object):
                 self.sprite.image = self.image_right
             self.vx += ACCEL
         else:
-            self.vx *= FRICTION
+            self.vx *= X_FRICTION
         
-        self.vx = util.clip_to_range(self.vx,-MAX_SPEED,MAX_SPEED)
-        self.vy = util.clip_to_range(self.vy,-MAX_SPEED,MAX_SPEED)
+        self.vx = util.clip_to_range(self.vx,-X_MAX_SPEED,X_MAX_SPEED)
+        self.vy = util.clip_to_range(self.vy,-Y_MAX_SPEED,Y_MAX_SPEED)
         
         self.sprite.x += self.vx
         self.sprite.y += self.vy
@@ -210,12 +221,20 @@ class Alison(object):
                 ay = y * 16
                 block = self.parent.room[x,y]
                 if block.material and block.material.solid:
-                    if self.vy < 0 and ay < self.down < ay + 16 and (ax < self.left < ax + 16 or ax < self.right < ax + 16):
-                        print x,y
-                        self.sprite.y = y*16 + 15
+                    if self.vy < 0 and ay <= self.down < ay + 16 and (ax <= self.left < ax + 16 or ax <= self.right < ax + 16):
+                        self.sprite.y = y*16 + 16
                         self.vy = 0
-                        
-                            
+                        self.cooldown_jump = 0
+                    elif self.vy > 0 and ay <= self.up < ay + 16 and (ax <= self.left < ax + 16 or ax <= self.right < ax + 16):
+                        self.sprite.y = y*16 - 16
+                        self.vy = 0
+                        self.jumping = 0
+                    if self.vx < 0 and ax <= self.left < ax + 16 and (ay <= self.down < ay + 16 or ay <= self.up < ay + 16):
+                        self.sprite.x = x*16 + 16
+                        self.vx = 0
+                    elif self.vx > 0 and ax <= self.right < ax +16 and (ay <= self.down < ay + 16 or ay <= self.up < ay + 16):
+                        self.sprite.x = x*16
+                        self.vx = 0        
                     #elif self.vy > 0 and y*16 < self.up < y* 16 + 16 and (x*16 < self.left < x* 16 + 16 or x*16 < self.right < x* 16 + 16):
                     #        self.sprite.y = y*16
                     #        self.vy = 0
@@ -227,7 +246,7 @@ class Alison(object):
                     #        self.sprite.x = x*16
                     #        self.vx = 0
         
-        print int(self.sprite.y/16)
+        print self.left, self.right
         
         #print self.sprite.y
         
@@ -277,6 +296,14 @@ class GameState(State):
         gl.glColor4ub(*[255,255,255,255])
         self.player.draw()
         self.lightbatch.draw()
+        
+        gl.glBegin(gl.GL_LINES)
+        gl.glVertex2i(int(self.player.left),720)
+        gl.glVertex2i(int(self.player.left),0)
+        gl.glVertex2i(int(self.player.right),720)
+        gl.glVertex2i(int(self.player.right),0)
+        gl.glEnd()
+        
     
     def update_tilebuffer(self):
         self.tilebuffer = pyglet.image.Texture.create(SCREEN_X,SCREEN_Y)
