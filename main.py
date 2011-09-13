@@ -4,11 +4,15 @@ import os
 
 from key_bindings import *
 
+SCREEN_X = 960
+SCREEN_Y = 720
+
 ROOM_X = 60
 ROOM_Y = 45
 
 FRICTION = 800
 ACCEL = 800
+GRAVITY = 200
 MAX_SPEED = 200
 
 range = xrange
@@ -86,8 +90,8 @@ def check_ray(x1,y1,x2,y2,room):
 
 class MainWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
-        kwargs['width'] = 960
-        kwargs['height'] = 720
+        kwargs['width'] = SCREEN_X
+        kwargs['height'] = SCREEN_Y
         pyglet.window.Window.__init__(self, *args, **kwargs)
         self.set_exclusive_keyboard(False)
         pyglet.clock.schedule_interval(self.update, 1/60.0)
@@ -155,11 +159,6 @@ class Alison(object):
             self.vy += ACCEL*dt
         elif self.parent.keys[PLAYER_DOWN]:
             self.vy -= ACCEL*dt
-        else:
-            if abs(self.vy) < math.copysign(FRICTION*dt,self.vy):
-                self.vy = 0
-            else:
-                self.vy -= math.copysign(FRICTION*dt,self.vy)
         if self.parent.keys[PLAYER_LEFT]:
             if self.dir != 1:
                 self.dir = 1
@@ -170,15 +169,13 @@ class Alison(object):
                 self.dir = 0
                 self.sprite.image = self.image_right
             self.vx += ACCEL*dt
-        else:
-            if abs(self.vx) < math.copysign(FRICTION*dt,self.vx):
-                self.vx = 0
-            else:
-                self.vx -= math.copysign(FRICTION*dt,self.vx)
+        #self.vy -= GRAVITY*dt
         self.vx = util.clip_to_range(self.vx,-MAX_SPEED,MAX_SPEED)
         self.vy = util.clip_to_range(self.vy,-MAX_SPEED,MAX_SPEED)
         self.sprite.y += self.vy*dt
         self.sprite.x += self.vx*dt
+        
+        #print self.sprite.y
         
         
     
@@ -201,7 +198,10 @@ class GameState(State):
         
         self.keys = key.KeyStateHandler()
         
-        self.player = Alison(self,250,320)
+        self.player = Alison(self,250,600)
+        
+        self.update_tilebuffer()
+        self.update_lightbatch()
         
     def activate(self):
         self.parent.push_handlers(self.keys)
@@ -213,25 +213,41 @@ class GameState(State):
         self.player.update(dt)
         
     def on_draw(self):
+        self.parent.set_caption(str(pyglet.clock.get_fps()))
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         gl.glColor4ub(*[255,255,255,255])
         self.bg.blit(0,0)
 
+        self.tilebuffer.blit(0,0)
+        
+        gl.glColor4ub(*[255,255,255,255])
+        self.player.draw()
+        self.lightbatch.draw()
+    
+    def update_tilebuffer(self):
+        self.tilebuffer = pyglet.image.Texture.create(SCREEN_X,SCREEN_Y)
         for x in range(ROOM_X):
             for y in range(ROOM_Y):
                 square = self.room[x,y]
                 if square.material and square.material.visible and square.material.texture != None:
                     gl.glColor3ub(*square.material.colour)
-                    square.material.texture.blit(x*16,y*16)
-        
-        gl.glColor4ub(*[255,255,255,255])
-        self.player.draw()
-        
+                    self.tilebuffer.blit_into(square.material.texture,x*16,y*16,0)
+                    
+    def update_lightbatch(self):
+        self.lightbatch = pyglet.graphics.Batch()
+        colours = []
+        vertexes = []
         for x in range(ROOM_X):
             for y in range(ROOM_Y):
-                gl.glColor4ub(*[0,0,0,255-self.room[x,y].base_light])
-                gl.glRecti(x*16,y*16,x*16+16,y*16+16)
+                colours.extend([0,0,0,255-self.room[x,y].base_light]*4)
+                vertexes.extend([x*16,y*16,  x*16+16,y*16,  x*16+16,y*16+16,  x*16,y*16+16])
                 
+                #gl.glColor4ub(*[0,0,0,255-self.room[x,y].base_light])
+                #gl.glRecti(x*16,y*16,x*16+16,y*16+16)
+        self.lightbatch.add(4*ROOM_X*ROOM_Y, gl.GL_QUADS, None,
+                                                              ('c4B',tuple(colours)),
+                                                              ('v2f',tuple(vertexes)))
+        
 
 class Material(object):
     def __init__(self,name,visible=True,solid=False,colour=None,texture=None,transparent=False,light_ambient=0,light=0,light_dropoff=0.5,layer=-1):
@@ -244,7 +260,7 @@ class Material(object):
         self.light_ambient = light_ambient
         self.transparent = transparent
         if texture:
-            self.texture = pyglet.image.load(os.path.abspath(os.path.join("res","tiles",texture+".png"))).get_texture()
+            self.texture = pyglet.image.load(os.path.abspath(os.path.join("res","tiles",texture+".png")))
         else:
             self.texture = None
         
