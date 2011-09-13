@@ -226,29 +226,15 @@ class Alison(object):
                         self.vy = 0
                         self.cooldown_jump = 0
                     elif self.vy > 0 and ay <= self.up < ay + 16 and (ax <= self.left < ax + 16 or ax <= self.right < ax + 16):
-                        self.sprite.y = y*16 - 16
+                        self.sprite.y = y*16 - self.sprite.height
                         self.vy = 0
                         self.jumping = 0
                     if self.vx < 0 and ax <= self.left < ax + 16 and (ay <= self.down < ay + 16 or ay <= self.up < ay + 16):
-                        self.sprite.x = x*16 + 16
+                        self.sprite.x = x*16 + 16 + self.sprite.width/2
                         self.vx = 0
                     elif self.vx > 0 and ax <= self.right < ax +16 and (ay <= self.down < ay + 16 or ay <= self.up < ay + 16):
-                        self.sprite.x = x*16
-                        self.vx = 0        
-                    #elif self.vy > 0 and y*16 < self.up < y* 16 + 16 and (x*16 < self.left < x* 16 + 16 or x*16 < self.right < x* 16 + 16):
-                    #        self.sprite.y = y*16
-                    #        self.vy = 0
-                            
-                    #if self.vx < 0 and x*16 +16 < self.left < x* 16 + 32 and (y*16 < self.up < y* 16 + 16 or y*16 < self.down < y* 16 + 16):
-                    #        self.sprite.x = x*16 + 32
-                    #        self.vx = 0
-                    #elif self.vx > 0 and x*16 +16 < self.right < x* 16 + 16 and (y*16 < self.up < y* 16 + 16 or y*16 < self.down < y* 16 + 16):
-                    #        self.sprite.x = x*16
-                    #        self.vx = 0
-        
-        print self.left, self.right
-        
-        #print self.sprite.y
+                        self.sprite.x = x*16 - self.sprite.width/2 -1
+                        self.vx = 0
         
         
     
@@ -302,6 +288,10 @@ class GameState(State):
         gl.glVertex2i(int(self.player.left),0)
         gl.glVertex2i(int(self.player.right),720)
         gl.glVertex2i(int(self.player.right),0)
+        gl.glVertex2i(960,int(self.player.up))
+        gl.glVertex2i(0,int(self.player.up))
+        gl.glVertex2i(960,int(self.player.down))
+        gl.glVertex2i(0,int(self.player.down))
         gl.glEnd()
         
     
