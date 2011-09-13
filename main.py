@@ -10,10 +10,11 @@ SCREEN_Y = 720
 ROOM_X = 60
 ROOM_Y = 45
 
-FRICTION = 800
-ACCEL = 800
-GRAVITY = 200
-MAX_SPEED = 200
+FRICTION = .8
+ACCEL = 4
+JUMP = 10
+GRAVITY = 3
+MAX_SPEED = 12
 
 range = xrange
 
@@ -140,9 +141,7 @@ class Alison(object):
         for file in sorted(os.listdir(path)):
             file = os.path.join(path,file)
             if os.path.isfile(file):
-                frames.append(pyglet.image.AnimationFrame(pyglet.image.load(os.path.abspath(os.path.join(file))),0.05))
-                frames[-1].image.anchor_x = frames[-1].image.width/2
-                frames[-1].image.anchor_y = frames[-1].image.height/2
+                frames.append(pyglet.image.AnimationFrame(pyglet.image.load(os.path.abspath(os.path.join(file))),0.1))
         
         self.image_right = pyglet.image.Animation(frames)
         self.image_left = self.image_right.get_transform(flip_x=True)
@@ -153,27 +152,82 @@ class Alison(object):
         
         self.vx = self.vy = 0
         self.dir = 1
-                
+    
+    def _up(self):
+        return self.sprite.y + self.sprite.height
+    up = property(_up)
+    def _down(self):
+        return self.sprite.y
+    down = property(_down)
+    def _left(self):
+        return self.sprite.x
+    left = property(_left)
+    def _right(self):
+        return self.sprite.x + self.sprite.width
+    right = property(_right)
+    #
+    #def block_below(self):
+    #    left, right = int(self.left/16), int(self.right/16)
+    #    for y in range(math.floor(self.down/16),0,-1):
+    #        if (self.parent.room[left,y].material and self.parent.room[left,y].material.solid) or (self.parent.room[right,y].material and self.parent.room[right,y].material.solid):
+    #            return y+2
+    #    return None
+    
+    def jump(self):
+        self.vy = JUMP
+    
     def update(self,dt):
-        if self.parent.keys[PLAYER_UP]:
-            self.vy += ACCEL*dt
-        elif self.parent.keys[PLAYER_DOWN]:
-            self.vy -= ACCEL*dt
+        #if self.parent.keys[PLAYER_UP]:
+        #    self.vy += ACCEL
+        #elif self.parent.keys[PLAYER_DOWN]:
+        #    self.vy -= ACCEL
+        #else:
+        self.vy *= FRICTION
+        self.vy -= GRAVITY
         if self.parent.keys[PLAYER_LEFT]:
             if self.dir != 1:
                 self.dir = 1
                 self.sprite.image = self.image_left
-            self.vx -= ACCEL*dt
+            self.vx -= ACCEL
         elif self.parent.keys[PLAYER_RIGHT]:
             if self.dir != 0:
                 self.dir = 0
                 self.sprite.image = self.image_right
-            self.vx += ACCEL*dt
-        #self.vy -= GRAVITY*dt
+            self.vx += ACCEL
+        else:
+            self.vx *= FRICTION
+        
         self.vx = util.clip_to_range(self.vx,-MAX_SPEED,MAX_SPEED)
         self.vy = util.clip_to_range(self.vy,-MAX_SPEED,MAX_SPEED)
-        self.sprite.y += self.vy*dt
-        self.sprite.x += self.vx*dt
+        
+        self.sprite.x += self.vx
+        self.sprite.y += self.vy
+        
+        ## Check Collisions Here
+        for x in range(self.parent.room.x):
+            ax = x * 16
+            for y in range(self.parent.room.y):
+                ay = y * 16
+                block = self.parent.room[x,y]
+                if block.material and block.material.solid:
+                    if self.vy < 0 and ay < self.down < ay + 16 and (ax < self.left < ax + 16 or ax < self.right < ax + 16):
+                        print x,y
+                        self.sprite.y = y*16 + 15
+                        self.vy = 0
+                        
+                            
+                    #elif self.vy > 0 and y*16 < self.up < y* 16 + 16 and (x*16 < self.left < x* 16 + 16 or x*16 < self.right < x* 16 + 16):
+                    #        self.sprite.y = y*16
+                    #        self.vy = 0
+                            
+                    #if self.vx < 0 and x*16 +16 < self.left < x* 16 + 32 and (y*16 < self.up < y* 16 + 16 or y*16 < self.down < y* 16 + 16):
+                    #        self.sprite.x = x*16 + 32
+                    #        self.vx = 0
+                    #elif self.vx > 0 and x*16 +16 < self.right < x* 16 + 16 and (y*16 < self.up < y* 16 + 16 or y*16 < self.down < y* 16 + 16):
+                    #        self.sprite.x = x*16
+                    #        self.vx = 0
+        
+        print int(self.sprite.y/16)
         
         #print self.sprite.y
         
