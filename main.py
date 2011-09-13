@@ -223,23 +223,27 @@ class Alison(object):
                 ay = y * 16
                 block = self.parent.room[x,y]
                 if block.material and block.material.solid:
-                    if self.vy < 0 and ay <= self.down < ay + 16 and (ax <= self.left < ax + 16 or ax <= self.right < ax + 16):
+                    if self.vy < 0 and ay <= self.down < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
                         self.sprite.y = y*16 + 16
                         self.vy = 0
                         self.cooldown_jump = 0
-                    elif self.vy > 0 and ay <= self.up < ay + 16 and (ax <= self.left < ax + 16 or ax <= self.right < ax + 16):
-                        self.sprite.y = y*16 - self.sprite.height
+                        print "hity DO", self.vx
+                    elif self.vy > 0 - 2 and ay <= self.up < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
+                        self.sprite.y = y*16 - self.sprite.height -2
                         self.vy = 0
                         self.jumping = 0
-                    if self.vx < 0 and ax <= self.left < ax + 16 and (ay <= self.down < ay + 16 or ay <= self.up < ay + 16):
-                        self.sprite.x = x*16 + 16 + self.sprite.width/2
+                        print "hity UP"
+                    if self.vx < 0 and ax <= self.left < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
+                        self.sprite.x = x*16 + 15 + self.sprite.width/2
                         self.vx = 0
-                    elif self.vx > 0 and ax <= self.right < ax +16 and (ay <= self.down < ay + 16 or ay <= self.up < ay + 16):
+                        print "hitx"
+                    elif self.vx > 0 and ax <= self.right < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
                         self.sprite.x = x*16 - self.sprite.width/2 -1
                         self.vx = 0
-        self.parent.lights[0] = (int(self.sprite.x/16),int(self.sprite.y/16)+1,120,0.3)
+                        print "hitx"
+        self.parent.lights[0] = (int(self.sprite.x/16),int(self.sprite.y/16)+1,120,0.4)
         
-        
+        print ay
     
     def draw(self):
         self.sprite.draw()
