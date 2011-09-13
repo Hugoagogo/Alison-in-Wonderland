@@ -156,6 +156,8 @@ class Alison(object):
         self.vx = self.vy = self.cooldown_jump = 0
         self.jumping = 0
         self.dir = 1
+        
+        self.parent.lights.append((int(self.sprite.x/16),int(self.sprite.y/16),100,0.45))
     
     def _up(self):
         return self.sprite.y + self.sprite.height
@@ -235,6 +237,7 @@ class Alison(object):
                     elif self.vx > 0 and ax <= self.right < ax +16 and (ay <= self.down < ay + 16 or ay <= self.up < ay + 16):
                         self.sprite.x = x*16 - self.sprite.width/2 -1
                         self.vx = 0
+        self.parent.lights[0] = (int(self.sprite.x/16),int(self.sprite.y/16)+1,120,0.3)
         
         
     
@@ -254,6 +257,7 @@ class GameState(State):
         self.room = construct_room("level.lvl",materials)
         self.bg = pyglet.image.load(os.path.abspath(os.path.join("res","backgrounds","above1.png"))).get_texture()
         update_lightmap(self.room)
+        self.lights = []
         
         self.keys = key.KeyStateHandler()
         
@@ -264,12 +268,18 @@ class GameState(State):
         
     def activate(self):
         self.parent.push_handlers(self.keys)
+        pyglet.clock.schedule_interval(self.do_lights, 1/5.0)
     def deactivate(self):
         self.parent.pop_handlers()
         
         
     def update(self,dt):
         self.player.update(dt)
+    
+    def do_lights(self,dt):
+        self.dynamic_light(self.lights)
+        self.update_lightbatch()
+        
         
     def on_draw(self):
         self.parent.set_caption(str(pyglet.clock.get_fps()))
@@ -304,13 +314,32 @@ class GameState(State):
                     gl.glColor3ub(*square.material.colour)
                     self.tilebuffer.blit_into(square.material.texture,x*16,y*16,0)
                     
+    def dynamic_light(self,lights):
+        for x in range(ROOM_X):
+            for y in range(ROOM_Y):
+                self.room[x,y].dyn_light = 0
+                
+        for x,y,light,dropoff in lights:
+            l = int(light*dropoff)
+            for nx in range(util.clip_to_range(x-l,0,self.room.x),util.clip_to_range(x+l,0,self.room.x)):
+                for ny in range(util.clip_to_range(y-l,0,self.room.y),util.clip_to_range(y+l,0,self.room.y)):
+                    if not (y == ny and x == nx):
+                        if check_ray(x,y,nx,ny,self.room):
+                            self.room[nx,ny].dyn_light += int(light/(((x-nx)**2+(y-ny)**2)**dropoff))
+                    else:
+                        self.room[nx,ny].dyn_light += light
+                    
+        for x in range(ROOM_X):
+            for y in range(ROOM_Y):
+                self.room[x,y].dyn_light = util.clip_to_range(self.room[x,y].dyn_light+self.room[x,y].base_light,0,255)-self.room[x,y].base_light
+                    
     def update_lightbatch(self):
         self.lightbatch = pyglet.graphics.Batch()
         colours = []
         vertexes = []
         for x in range(ROOM_X):
             for y in range(ROOM_Y):
-                colours.extend([0,0,0,255-self.room[x,y].base_light]*4)
+                colours.extend([0,0,0,255-self.room[x,y].dyn_light-self.room[x,y].base_light]*4)
                 vertexes.extend([x*16,y*16,  x*16+16,y*16,  x*16+16,y*16+16,  x*16,y*16+16])
                 
                 #gl.glColor4ub(*[0,0,0,255-self.room[x,y].base_light])
