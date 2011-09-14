@@ -31,7 +31,7 @@
 "M":
     name: Mushroom
     visible: 1
-    solid: 1
+    solid: 0
     colour: [50,240,240]
     texture: mushroom
     transparent: 1

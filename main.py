@@ -20,6 +20,12 @@ JUMP_TIME = 8
 
 range = xrange
 
+EDGES = []
+EDGES.extend([(x,0) for x in range(0,ROOM_X)])
+EDGES.extend([(x,ROOM_Y-1) for x in range(0,ROOM_X)])
+EDGES.extend([(0,y) for y in range(0,ROOM_Y)])
+EDGES.extend([(ROOM_X-1,y) for y in range(0,ROOM_Y)])
+
 def load_materials(material_filename):
     f = open(material_filename)
     raw_materials = yaml.load(f.read())
@@ -65,6 +71,31 @@ def update_lightmap(room):
     for bx in range(room.x):
         for by in range(room.y):
             room[bx,by].base_light = util.clip_to_range(room[bx,by].base_light,0,255)
+            
+def update_lightmap2(room):
+    squares = []
+    squares.extend([(x,0) for x in range(0,room.x)])
+    squares.extend([(x,room.y-1) for x in range(0,room.x)])
+    squares.extend([(0,y) for y in range(0,room.y)])
+    squares.extend([(room.x-1,y) for y in range(0,room.y)])
+    for bx in range(room.x):
+        for by in range(room.y):
+            block = room[bx,by]
+            if block.material != None and block.material.light:
+                l = block.material.light
+                block.base_light+=l
+                temp = set()
+                for x, y in squares:
+                    if not (bx == x and by == y):
+                        temp |= check_ray2(bx,by,x,y,room)
+
+                for x, y in temp:
+                    room[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**block.material.light_dropoff))))
+                        
+          
+    for bx in range(room.x):
+        for by in range(room.y):
+            room[bx,by].base_light = util.clip_to_range(room[bx,by].base_light,0,255)
                 
 def check_ray(x1,y1,x2,y2,room):
     #print "============================================================"
@@ -90,6 +121,35 @@ def check_ray(x1,y1,x2,y2,room):
             if room[x1,y1].material != None and room[x1,y1].material.transparent == 0 and (y1 != y2 or iy == y1) and x1 != x2:
                 return False
     return True
+
+def check_ray2(x1,y1,x2,y2,room):
+    iy = y1
+    lit = set()
+    if x1 == x2:
+        y_step_dir = int(math.copysign(1,y2-y1))
+        while y1 != y2:
+            y1 += y_step_dir
+            if room[x1,y1].material != None and room[x1,y1].material.transparent == 0 and y1 != y2:
+                return lit
+            else:
+                lit.add((x1,y1))
+    else:
+        m = abs((y1-y2)/float(x1-x2))
+        x_step_dir = int(math.copysign(1,x2-x1))
+        y_step_dir = int(math.copysign(1,y2-y1))
+        count = m
+        while y1 != y2 or x1 != x2:
+            if count > 1:
+                count -= 1
+                y1 += y_step_dir
+            else:
+                count += m
+                x1 += x_step_dir
+            if room[x1,y1].material != None and room[x1,y1].material.transparent == 0 and (y1 != y2 or iy == y1) and x1 != x2:
+                return lit
+            else:
+                lit.add((x1,y1))
+    return lit
 
 class MainWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
@@ -158,6 +218,8 @@ class Alison(object):
         self.dir = 1
         
         self.parent.lights.append((int(self.sprite.x/16),int(self.sprite.y/16),100,0.45))
+        self.parent.lights.append((int(self.sprite.x/16),int(self.sprite.y/16),100,0.45))
+        self.parent.lights.append((int(self.sprite.x/16)+10,int(self.sprite.y/16),100,0.45))
     
     def _up(self):
         return self.sprite.y + self.sprite.height
@@ -243,7 +305,7 @@ class Alison(object):
                         print "hitx"
         self.parent.lights[0] = (int(self.sprite.x/16),int(self.sprite.y/16)+1,120,0.4)
         
-        print ay
+        #print ay
     
     def draw(self):
         self.sprite.draw()
@@ -260,7 +322,7 @@ class GameState(State):
         materials = load_materials("materials.yaml")
         self.room = construct_room("level.lvl",materials)
         self.bg = pyglet.image.load(os.path.abspath(os.path.join("res","backgrounds","above1.png"))).get_texture()
-        update_lightmap(self.room)
+        update_lightmap2(self.room)
         self.lights = []
         
         self.keys = key.KeyStateHandler()
@@ -272,7 +334,7 @@ class GameState(State):
         
     def activate(self):
         self.parent.push_handlers(self.keys)
-        pyglet.clock.schedule_interval(self.do_lights, 1/5.0)
+        pyglet.clock.schedule_interval(self.do_lights, 1/15.0)
     def deactivate(self):
         self.parent.pop_handlers()
         
@@ -281,8 +343,9 @@ class GameState(State):
         self.player.update(dt)
     
     def do_lights(self,dt):
-        self.dynamic_light(self.lights)
-        self.update_lightbatch()
+        if pyglet.clock.get_fps() > 30:        
+            self.dynamic_light(self.lights)
+            self.update_lightbatch()
         
         
     def on_draw(self):
@@ -297,16 +360,16 @@ class GameState(State):
         self.player.draw()
         self.lightbatch.draw()
         
-        gl.glBegin(gl.GL_LINES)
-        gl.glVertex2i(int(self.player.left),720)
-        gl.glVertex2i(int(self.player.left),0)
-        gl.glVertex2i(int(self.player.right),720)
-        gl.glVertex2i(int(self.player.right),0)
-        gl.glVertex2i(960,int(self.player.up))
-        gl.glVertex2i(0,int(self.player.up))
-        gl.glVertex2i(960,int(self.player.down))
-        gl.glVertex2i(0,int(self.player.down))
-        gl.glEnd()
+        #gl.glBegin(gl.GL_LINES)
+        #gl.glVertex2i(int(self.player.left),720)
+        #gl.glVertex2i(int(self.player.left),0)
+        #gl.glVertex2i(int(self.player.right),720)
+        #gl.glVertex2i(int(self.player.right),0)
+        #gl.glVertex2i(960,int(self.player.up))
+        #gl.glVertex2i(0,int(self.player.up))
+        #gl.glVertex2i(960,int(self.player.down))
+        #gl.glVertex2i(0,int(self.player.down))
+        #gl.glEnd()
         
     
     def update_tilebuffer(self):
@@ -319,23 +382,24 @@ class GameState(State):
                     self.tilebuffer.blit_into(square.material.texture,x*16,y*16,0)
                     
     def dynamic_light(self,lights):
-        for x in range(ROOM_X):
-            for y in range(ROOM_Y):
-                self.room[x,y].dyn_light = 0
-                
-        for x,y,light,dropoff in lights:
-            l = int(light*dropoff)
-            for nx in range(util.clip_to_range(x-l,0,self.room.x),util.clip_to_range(x+l,0,self.room.x)):
-                for ny in range(util.clip_to_range(y-l,0,self.room.y),util.clip_to_range(y+l,0,self.room.y)):
-                    if not (y == ny and x == nx):
-                        if check_ray(x,y,nx,ny,self.room):
-                            self.room[nx,ny].dyn_light += int(light/(((x-nx)**2+(y-ny)**2)**dropoff))
-                    else:
-                        self.room[nx,ny].dyn_light += light
-                    
-        for x in range(ROOM_X):
-            for y in range(ROOM_Y):
-                self.room[x,y].dyn_light = util.clip_to_range(self.room[x,y].dyn_light+self.room[x,y].base_light,0,255)-self.room[x,y].base_light
+        if lights:
+            for x in range(ROOM_X):
+                for y in range(ROOM_Y):
+                    self.room[x,y].dyn_light = 0
+            
+            for bx,by,light,dropoff in lights:
+                block = self.room[bx,by]
+                block.dyn_light+=light
+                temp = set()
+                for x, y in EDGES:
+                    if not (bx == x and by == y):
+                        temp |= check_ray2(bx,by,x,y,self.room)
+                for x, y in temp:
+                    self.room[x,y].dyn_light += int(round((light/(((bx-x)**2+(by-y)**2)**dropoff))))
+                        
+            for x in range(ROOM_X):
+                for y in range(ROOM_Y):
+                    self.room[x,y].dyn_light = util.clip_to_range(self.room[x,y].dyn_light+self.room[x,y].base_light,0,255)-self.room[x,y].base_light
                     
     def update_lightbatch(self):
         self.lightbatch = pyglet.graphics.Batch()
