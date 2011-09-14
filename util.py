@@ -4,12 +4,10 @@ class Array2D(object):
         self.y = y
         self.data = [[None]*x for py in range(y)]
     def __getitem__(self,key):
-        x,y = key
-        return self.data[y][x]
+        return self.data[key[1]][key[0]]
         
     def __setitem__(self,key,value):
-        x,y = key
-        self.data[y][x] = value
+        self.data[key[1]][key[0]] = value
         
 def clip_to_range(val,min,max):
     if val < min:

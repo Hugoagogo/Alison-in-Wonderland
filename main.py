@@ -2,6 +2,8 @@ import pyglet, yaml, util, math
 from pyglet import gl
 import os
 
+#import profile
+
 from key_bindings import *
 
 SCREEN_X = 960
@@ -125,18 +127,21 @@ def check_ray(x1,y1,x2,y2,room):
 def check_ray2(x1,y1,x2,y2,room):
     iy = y1
     lit = set()
+    dx = x2-x1
+    dy = y2-y1
     if x1 == x2:
-        y_step_dir = int(math.copysign(1,y2-y1))
+        y_step_dir = int(math.copysign(1,dy))
         while y1 != y2:
             y1 += y_step_dir
             if room[x1,y1].material != None and room[x1,y1].material.transparent == 0 and y1 != y2:
+                lit.add((x1,y1))
                 return lit
             else:
                 lit.add((x1,y1))
     else:
-        m = abs((y1-y2)/float(x1-x2))
-        x_step_dir = int(math.copysign(1,x2-x1))
-        y_step_dir = int(math.copysign(1,y2-y1))
+        m = abs((dy)/float(dx))
+        x_step_dir = int(math.copysign(1,dx))
+        y_step_dir = int(math.copysign(1,dy))
         count = m
         while y1 != y2 or x1 != x2:
             if count > 1:
@@ -146,6 +151,7 @@ def check_ray2(x1,y1,x2,y2,room):
                 count += m
                 x1 += x_step_dir
             if room[x1,y1].material != None and room[x1,y1].material.transparent == 0 and (y1 != y2 or iy == y1) and x1 != x2:
+                lit.add((x1,y1))
                 return lit
             else:
                 lit.add((x1,y1))
@@ -217,9 +223,9 @@ class Alison(object):
         self.jumping = 0
         self.dir = 1
         
-        self.parent.lights.append((int(self.sprite.x/16),int(self.sprite.y/16),100,0.45))
-        self.parent.lights.append((int(self.sprite.x/16),int(self.sprite.y/16),100,0.45))
-        self.parent.lights.append((int(self.sprite.x/16)+10,int(self.sprite.y/16),100,0.45))
+        self.parent.lights.append((int(self.sprite.x/16),int(self.sprite.y/16),100,20))
+        #self.parent.lights.append((int(self.sprite.x/16),int(self.sprite.y/16),100,0.45))
+        #self.parent.lights.append((int(self.sprite.x/16)+10,int(self.sprite.y/16),100,0.45))
     
     def _up(self):
         return self.sprite.y + self.sprite.height
@@ -303,7 +309,7 @@ class Alison(object):
                         self.sprite.x = x*16 - self.sprite.width/2 -1
                         self.vx = 0
                         print "hitx"
-        self.parent.lights[0] = (int(self.sprite.x/16),int(self.sprite.y/16)+1,120,0.4)
+        self.parent.lights[0] = (int(self.sprite.x/16),int(self.sprite.y/16)+1,120,20)
         
         #print ay
     
@@ -334,7 +340,8 @@ class GameState(State):
         
     def activate(self):
         self.parent.push_handlers(self.keys)
-        pyglet.clock.schedule_interval(self.do_lights, 1/15.0)
+        pyglet.clock.schedule_interval(self.do_lights, 1/60.0)
+        #pyglet.clock.schedule_interval(lambda _:exit(), 20)
     def deactivate(self):
         self.parent.pop_handlers()
         
@@ -343,7 +350,7 @@ class GameState(State):
         self.player.update(dt)
     
     def do_lights(self,dt):
-        if pyglet.clock.get_fps() > 30:        
+        if pyglet.clock.get_fps() > 45:
             self.dynamic_light(self.lights)
             self.update_lightbatch()
         
@@ -388,14 +395,22 @@ class GameState(State):
                     self.room[x,y].dyn_light = 0
             
             for bx,by,light,dropoff in lights:
+                edges = []
+                r, l = util.clip_to_range(bx+dropoff,0,ROOM_X-1), util.clip_to_range(bx-dropoff,0,ROOM_X-1)
+                u, d = util.clip_to_range(by+dropoff,0,ROOM_Y-1), util.clip_to_range(by-dropoff,0,ROOM_Y-1)
+                edges.extend([(x,u) for x in range(l,r)])
+                edges.extend([(x,d) for x in range(l,r)])
+                edges.extend([(l,y) for y in range(d,u)])
+                edges.extend([(r,y) for y in range(d,u)])
                 block = self.room[bx,by]
                 block.dyn_light+=light
                 temp = set()
-                for x, y in EDGES:
+                for x, y in edges:
+                    print x,y
                     if not (bx == x and by == y):
                         temp |= check_ray2(bx,by,x,y,self.room)
                 for x, y in temp:
-                    self.room[x,y].dyn_light += int(round((light/(((bx-x)**2+(by-y)**2)**dropoff))))
+                    self.room[x,y].dyn_light += int(light * (float(((bx-x)**2+(by-y)**2)**0.5)/dropoff))
                         
             for x in range(ROOM_X):
                 for y in range(ROOM_Y):
