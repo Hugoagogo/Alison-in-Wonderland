@@ -35,27 +35,13 @@ def load_materials(material_filename):
     materials = {}
     for key, mat in raw_materials.items():
         materials[key] = Material(**mat)
-        print "Loaded:",key
+        print "Loaded Material:",key
     return materials
 
-def construct_room(room_filename,materials):
-    room_file = open(room_filename,"rb")
-    name = room_file.readline().strip()
-    print name
-    room = util.Array2D(60,45)
-    for lineno in range(room.y):
-        line = room_file.readline().strip("\n")
-        for colno in range(room.x):
-            mat = line[colno]
-            if mat in materials:
-                mat = materials[mat]
-            else: mat = None
-            tile = Block(mat)
-            room[colno,lineno] = tile
-    room.data.reverse()
-    return room
-
 def update_lightmap(room):
+    for x in range(ROOM_X):
+        for y in range(ROOM_Y):
+            room[x,y].base_light = 0
     for bx in range(room.x):
         for by in range(room.y):
             block = room[bx,by]
@@ -133,11 +119,9 @@ def check_ray2(x1,y1,x2,y2,room):
         y_step_dir = int(math.copysign(1,dy))
         while y1 != y2:
             y1 += y_step_dir
+            lit.add((x1,y1))
             if room[x1,y1].material != None and room[x1,y1].material.transparent == 0 and y1 != y2:
-                lit.add((x1,y1))
                 return lit
-            else:
-                lit.add((x1,y1))
     else:
         m = abs((dy)/float(dx))
         x_step_dir = int(math.copysign(1,dx))
@@ -150,12 +134,33 @@ def check_ray2(x1,y1,x2,y2,room):
             else:
                 count += m
                 x1 += x_step_dir
+            lit.add((x1,y1))
             if room[x1,y1].material != None and room[x1,y1].material.transparent == 0 and (y1 != y2 or iy == y1) and x1 != x2:
-                lit.add((x1,y1))
                 return lit
-            else:
-                lit.add((x1,y1))
+                
     return lit
+
+class Room(util.Array2D):
+    def __init__(self, room_filename, materials):
+        super(Room, self).__init__(ROOM_X, ROOM_Y)
+        room_file = open(room_filename,"rb")
+        self.name = room_file.readline().strip()
+        self.specials = []
+        print "LOADED ROOM: ",self.name
+        for lineno in range(ROOM_Y):
+            line = room_file.readline().strip("\n")
+            for colno in range(ROOM_X):
+                mat = line[colno]
+                if mat in materials:
+                    mat = materials[mat]
+                else: mat = None
+                if mat and mat.special:
+                    tile = SpecialBlock(mat,**mat.special)
+                    self.specials.append((tile,colno,ROOM_Y-lineno-1))
+                else:
+                    tile = Block(mat)
+                self[colno,lineno] = tile
+        self.data.reverse()
 
 class MainWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
@@ -209,8 +214,14 @@ class Alison(object):
         for file in sorted(os.listdir(path)):
             file = os.path.join(path,file)
             if os.path.isfile(file):
-                frames.append(pyglet.image.AnimationFrame(pyglet.image.load(os.path.abspath(os.path.join(file))),0.1))
+                frames.append(pyglet.image.AnimationFrame(pyglet.image.load(os.path.abspath(file)),0.1))
                 frames[-1].image.anchor_x = frames[-1].image.width/2
+        
+        self.eye_right = pyglet.image.load(os.path.abspath(os.path.join("res","alison","eye.png")))
+        self.eye_left = pyglet.image.load(os.path.abspath(os.path.join("res","alison","eye2.png")))
+        self.eye_right.anchor_x = self.eye_right.width/2
+        self.eye_left.anchor_x = self.eye_left.width/2
+        self.eye = pyglet.sprite.Sprite(self.eye_left)
         
         self.image_right = pyglet.image.Animation(frames)
         self.image_left = self.image_right.get_transform(flip_x=True)
@@ -219,13 +230,8 @@ class Alison(object):
         
         self.parent = parent
         
-        self.vx = self.vy = self.cooldown_jump = 0
-        self.jumping = 0
+        self.vx = self.vy = self.cooldown_jump = self.glow = self.jumping = 0
         self.dir = 1
-        
-        self.parent.lights.append((int(self.sprite.x/16),int(self.sprite.y/16),100,20))
-        #self.parent.lights.append((int(self.sprite.x/16),int(self.sprite.y/16),100,0.45))
-        #self.parent.lights.append((int(self.sprite.x/16)+10,int(self.sprite.y/16),100,0.45))
     
     def _up(self):
         return self.sprite.y + self.sprite.height
@@ -239,6 +245,13 @@ class Alison(object):
     def _right(self):
         return self.sprite.x + self.sprite.width/2
     right = property(_right)
+    
+    def glow_on(self):
+        self.parent.lights[id(self)] = DynLight(100,0.45)
+        self.glow = True
+    def glow_off(self):
+        del self.parent.lights[id(self)]
+        self.glow = False
     #
     #def block_below(self):
     #    left, right = int(self.left/16), int(self.right/16)
@@ -269,11 +282,13 @@ class Alison(object):
             if self.dir != 1:
                 self.dir = 1
                 self.sprite.image = self.image_left
+                self.eye.image = self.eye_left
             self.vx -= ACCEL
         elif self.parent.keys[PLAYER_RIGHT]:
             if self.dir != 0:
                 self.dir = 0
                 self.sprite.image = self.image_right
+                self.eye.image = self.eye_right
             self.vx += ACCEL
         else:
             self.vx *= X_FRICTION
@@ -295,26 +310,58 @@ class Alison(object):
                         self.sprite.y = y*16 + 16
                         self.vy = 0
                         self.cooldown_jump = 0
-                        print "hity DO", self.vx
+                        #print "hity DO", self.vx
                     elif self.vy > 0 - 2 and ay <= self.up < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
                         self.sprite.y = y*16 - self.sprite.height -2
                         self.vy = 0
                         self.jumping = 0
-                        print "hity UP"
+                        #print "hity UP"
                     if self.vx < 0 and ax <= self.left < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
                         self.sprite.x = x*16 + 15 + self.sprite.width/2
                         self.vx = 0
-                        print "hitx"
+                        #print "hitx"
                     elif self.vx > 0 and ax <= self.right < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
                         self.sprite.x = x*16 - self.sprite.width/2 -1
                         self.vx = 0
-                        print "hitx"
-        self.parent.lights[0] = (int(self.sprite.x/16),int(self.sprite.y/16)+1,120,20)
+                        #print "hitx"
+        
+        self.eye.set_position(self.sprite.x, self.sprite.y)
+        
+        if self.glow:
+            self.parent.lights[id(self)].x = int(self.sprite.x/16)
+            self.parent.lights[id(self)].y = int(self.sprite.y/16)
+        refresh = False
+        for item, x, y in self.parent.room.specials:
+            dx = x*16
+            dy = y*16
+            if (dx < self.left < dx+item.material.texture.width or dx < self.right < dx+item.material.texture.width) and (dy <= self.down <= dy+item.material.texture.height or dy < self.up < dy+item.material.texture.height):
+                remove = item.destruct
+                if not item.needs_activation or self.parent.keys[PLAYER_ACTIVATE]:
+                    if item.type == "vial":
+                        if item.type_detail == "glow":
+                            self.glow_on()
+                    print "Activated: ", item.material.name
+                    if remove:
+                        refresh = True
+                        self.parent.room[x,y] = Block(None)
+                        self.parent.room.specials.remove((item, x, y))
+                        print x,y
+                    
+        if refresh:
+            update_lightmap(self.parent.room)
+            self.parent.update_tilebuffer(True)
+            self.parent.update_lightbatch()
+                    
+                
+            
         
         #print ay
     
     def draw(self):
         self.sprite.draw()
+        
+    def draw_eye(self):
+        self.eye.draw()
         
 
 class State(object):
@@ -326,10 +373,10 @@ class State(object):
 class GameState(State):
     def __init__(self):
         materials = load_materials("materials.yaml")
-        self.room = construct_room("level.lvl",materials)
+        self.room = Room("level.lvl",materials)
         self.bg = pyglet.image.load(os.path.abspath(os.path.join("res","backgrounds","above1.png"))).get_texture()
-        update_lightmap2(self.room)
-        self.lights = []
+        update_lightmap(self.room)
+        self.lights = {}
         
         self.keys = key.KeyStateHandler()
         
@@ -341,7 +388,7 @@ class GameState(State):
     def activate(self):
         self.parent.push_handlers(self.keys)
         pyglet.clock.schedule_interval(self.do_lights, 1/60.0)
-        #pyglet.clock.schedule_interval(lambda _:exit(), 20)
+        ##pyglet.clock.schedule_interval(lambda _:exit(), 20)
     def deactivate(self):
         self.parent.pop_handlers()
         
@@ -351,7 +398,7 @@ class GameState(State):
     
     def do_lights(self,dt):
         if pyglet.clock.get_fps() > 45:
-            self.dynamic_light(self.lights)
+            self.dynamic_light(self.lights.values())
             self.update_lightbatch()
         
         
@@ -366,6 +413,7 @@ class GameState(State):
         gl.glColor4ub(*[255,255,255,255])
         self.player.draw()
         self.lightbatch.draw()
+        self.player.draw_eye()
         
         #gl.glBegin(gl.GL_LINES)
         #gl.glVertex2i(int(self.player.left),720)
@@ -379,13 +427,16 @@ class GameState(State):
         #gl.glEnd()
         
     
-    def update_tilebuffer(self):
+    def update_tilebuffer(self,odd=False):
         self.tilebuffer = pyglet.image.Texture.create(SCREEN_X,SCREEN_Y)
         for x in range(ROOM_X):
             for y in range(ROOM_Y):
                 square = self.room[x,y]
                 if square.material and square.material.visible and square.material.texture != None:
-                    gl.glColor3ub(*square.material.colour)
+                    #gl.glColor3ub(*square.material.colour)
+                    if odd and type(square) != Block:
+                        print square
+                        print x, y
                     self.tilebuffer.blit_into(square.material.texture,x*16,y*16,0)
                     
     def dynamic_light(self,lights):
@@ -394,23 +445,15 @@ class GameState(State):
                 for y in range(ROOM_Y):
                     self.room[x,y].dyn_light = 0
             
-            for bx,by,light,dropoff in lights:
-                edges = []
-                r, l = util.clip_to_range(bx+dropoff,0,ROOM_X-1), util.clip_to_range(bx-dropoff,0,ROOM_X-1)
-                u, d = util.clip_to_range(by+dropoff,0,ROOM_Y-1), util.clip_to_range(by-dropoff,0,ROOM_Y-1)
-                edges.extend([(x,u) for x in range(l,r)])
-                edges.extend([(x,d) for x in range(l,r)])
-                edges.extend([(l,y) for y in range(d,u)])
-                edges.extend([(r,y) for y in range(d,u)])
-                block = self.room[bx,by]
-                block.dyn_light+=light
+            for light in lights:
+                block = self.room[light.x,light.y]
+                block.dyn_light+=light.light
                 temp = set()
-                for x, y in edges:
-                    print x,y
-                    if not (bx == x and by == y):
-                        temp |= check_ray2(bx,by,x,y,self.room)
+                for x, y in EDGES:
+                    if not (light.x == x and light.y == y):
+                        temp |= check_ray2(light.x,light.y,x,y,self.room)
                 for x, y in temp:
-                    self.room[x,y].dyn_light += int(light * (float(((bx-x)**2+(by-y)**2)**0.5)/dropoff))
+                    self.room[x,y].dyn_light += int(round((light.light/(((light.x-x)**2+(light.y-y)**2)**light.dropoff))))
                         
             for x in range(ROOM_X):
                 for y in range(ROOM_Y):
@@ -433,7 +476,7 @@ class GameState(State):
         
 
 class Material(object):
-    def __init__(self,name,visible=True,solid=False,colour=None,texture=None,transparent=False,light_ambient=0,light=0,light_dropoff=0.5,layer=-1):
+    def __init__(self,name,visible=True,solid=False,colour=None,texture=None,transparent=False,special=None,light_ambient=0,light=0,light_dropoff=0.5,layer=-1):
         self.name = name
         self.visible=visible
         self.solid = solid
@@ -442,6 +485,7 @@ class Material(object):
         self.light_dropoff = light_dropoff
         self.light_ambient = light_ambient
         self.transparent = transparent
+        self.special = special
         if texture:
             self.texture = pyglet.image.load(os.path.abspath(os.path.join("res","tiles",texture+".png")))
         else:
@@ -454,6 +498,24 @@ class Block(object):
         if self.material != None:
             self.base_light += material.light_ambient
         self.dyn_light = 0
+        
+class SpecialBlock(Block):
+    def __init__(self, material, type = "", description = "", type_detail = "", destruct = 0,needs_activation=False ):
+        super(SpecialBlock,self).__init__(material)
+        self.type= type
+        self.type_detail = type_detail
+        self.description = description
+        self.destruct = destruct
+        self.needs_activation = needs_activation
+    
+class DynLight(object):
+    def __init__(self,light,dropoff):
+        self.light = light
+        self.dropoff = dropoff
+        self.x = 0
+        self.y = 0
+        self.cooldown = 0
+        
 
 window = MainWindow()
 window.push_state(GameState())

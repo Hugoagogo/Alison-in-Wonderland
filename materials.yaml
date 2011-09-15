@@ -8,7 +8,7 @@
     light_ambient: 15
     
 "*":
-    name: sun
+    name: sun/moon
     visible: 0
     solid: 0
     transparent: 1
@@ -49,3 +49,30 @@
     layer: -1
     light: 90
     light_dropoff: 0.4
+    
+"I":
+    name: Sign
+    visible: 1
+    solid: 0
+    texture: sign
+    transparent: 1
+    layer: -1
+    light: 10
+    special:
+        type: sign
+        description: This is a test sign
+        needs_activation: 1
+    
+V:
+    name: Vial
+    visible: 1
+    solid: 0
+    texture: vial
+    transparent: 1
+    layer: -1
+    light: 60
+    light_dropoff: 0.45
+    special:
+        type: vial
+        type_detail: glow
+        destruct: 1
