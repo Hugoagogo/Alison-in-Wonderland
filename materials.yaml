@@ -76,3 +76,17 @@ V:
         type: vial
         type_detail: glow
         destruct: 1
+        
+v:
+    name: Vial
+    visible: 1
+    solid: 0
+    texture: vial
+    transparent: 1
+    layer: -1
+    light: 60
+    light_dropoff: 0.45
+    special:
+        type: vial
+        type_detail: grow
+        destruct: 1

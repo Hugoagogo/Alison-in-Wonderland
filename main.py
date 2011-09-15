@@ -228,9 +228,12 @@ class Alison(object):
         self.sprite = pyglet.sprite.Sprite(self.image_left,x,y)
         self.sprite.set_position(x,y)
         
+        self.powerups = {'glow':PowerupGlow(self),
+                         'grow':PowerupGrow(self)}
+        
         self.parent = parent
         
-        self.vx = self.vy = self.cooldown_jump = self.glow = self.jumping = 0
+        self.vx = self.vy = self.cooldown_jump = self.jumping = 0
         self.dir = 1
     
     def _up(self):
@@ -246,20 +249,11 @@ class Alison(object):
         return self.sprite.x + self.sprite.width/2
     right = property(_right)
     
-    def glow_on(self):
-        self.parent.lights[id(self)] = DynLight(100,0.45)
-        self.glow = True
-    def glow_off(self):
-        del self.parent.lights[id(self)]
-        self.glow = False
-    #
-    #def block_below(self):
-    #    left, right = int(self.left/16), int(self.right/16)
-    #    for y in range(math.floor(self.down/16),0,-1):
-    #        if (self.parent.room[left,y].material and self.parent.room[left,y].material.solid) or (self.parent.room[right,y].material and self.parent.room[right,y].material.solid):
-    #            return y+2
-    #    return None
-    
+    def press(self,key):
+        if key in PLAYER_POWERUPS:
+            self.powerups[PLAYER_POWERUPS[key]].toggle()
+            print "Pressed:", PLAYER_POWERUPS[key]
+
     def update(self,dt):
         if not self.cooldown_jump and self.parent.keys[PLAYER_JUMP]:
             self.cooldown_jump = 1
@@ -327,9 +321,9 @@ class Alison(object):
         
         self.eye.set_position(self.sprite.x, self.sprite.y)
         
-        if self.glow:
+        if self.powerups['glow'].active:
             self.parent.lights[id(self)].x = int(self.sprite.x/16)
-            self.parent.lights[id(self)].y = int(self.sprite.y/16)
+            self.parent.lights[id(self)].y = int(self.up/16)
         refresh = False
         for item, x, y in self.parent.room.specials:
             dx = x*16
@@ -338,8 +332,8 @@ class Alison(object):
                 remove = item.destruct
                 if not item.needs_activation or self.parent.keys[PLAYER_ACTIVATE]:
                     if item.type == "vial":
-                        if item.type_detail == "glow":
-                            self.glow_on()
+                        self.powerups[item.type_detail].enabled = True
+                        
                     print "Activated: ", item.material.name
                     if remove:
                         refresh = True
@@ -363,6 +357,38 @@ class Alison(object):
     def draw_eye(self):
         self.eye.draw()
         
+class Powerup(object):
+    def __init__(self,parent):
+        self.parent = parent
+        self.active = False
+        self.enabled = False
+    def activate(self):
+        if self.enabled and not self.active:
+            self._activate()
+    def deactivate(self):
+        if self.enabled or self.active:
+            self._deactivate()
+    def toggle(self):
+        if self.active:
+            self.deactivate()
+        else:
+            self.activate()
+        
+class PowerupGlow(Powerup):
+    def _activate(self):
+        self.active = True
+        self.parent.parent.lights[id(self.parent)] = DynLight(100,0.45)
+    
+    def _deactivate(self):
+        self.active = False
+        del self.parent.parent.lights[id(self.parent)]
+        self.parent.parent.clear_dynamic_light()
+        
+class PowerupGrow(Powerup):
+    def _activate(self):
+        self.parent.sprite.scale = self.parent.eye.scale = 2
+    def _deactivate(self):
+        self.parent.sprite.scale = self.parent.eye.scale = 1
 
 class State(object):
     def activate(self):
@@ -400,6 +426,9 @@ class GameState(State):
         if pyglet.clock.get_fps() > 45:
             self.dynamic_light(self.lights.values())
             self.update_lightbatch()
+            
+    def on_key_press(self,key,modifiers):
+        self.player.press(key)
         
         
     def on_draw(self):
@@ -441,10 +470,7 @@ class GameState(State):
                     
     def dynamic_light(self,lights):
         if lights:
-            for x in range(ROOM_X):
-                for y in range(ROOM_Y):
-                    self.room[x,y].dyn_light = 0
-            
+            self.clear_dynamic_light()
             for light in lights:
                 block = self.room[light.x,light.y]
                 block.dyn_light+=light.light
@@ -458,6 +484,11 @@ class GameState(State):
             for x in range(ROOM_X):
                 for y in range(ROOM_Y):
                     self.room[x,y].dyn_light = util.clip_to_range(self.room[x,y].dyn_light+self.room[x,y].base_light,0,255)-self.room[x,y].base_light
+    
+    def clear_dynamic_light(self):
+        for x in range(ROOM_X):
+            for y in range(ROOM_Y):
+                self.room[x,y].dyn_light = 0
                     
     def update_lightbatch(self):
         self.lightbatch = pyglet.graphics.Batch()
