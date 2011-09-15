@@ -334,22 +334,17 @@ class Alison(object):
                     if item.type == "vial":
                         self.powerups[item.type_detail].enabled = True
                         
-                    print "Activated: ", item.material.name
+                    print "Enabled: ", item.material.name
                     if remove:
                         refresh = True
                         self.parent.room[x,y] = Block(None)
                         self.parent.room.specials.remove((item, x, y))
-                        print x,y
                     
         if refresh:
             update_lightmap(self.parent.room)
-            self.parent.update_tilebuffer(True)
+            self.parent.update_tilebuffer()
             self.parent.update_lightbatch()
                     
-                
-            
-        
-        #print ay
     
     def draw(self):
         self.sprite.draw()
@@ -364,9 +359,11 @@ class Powerup(object):
         self.enabled = False
     def activate(self):
         if self.enabled and not self.active:
+            self.active = True
             self._activate()
     def deactivate(self):
         if self.enabled or self.active:
+            self.active = False
             self._deactivate()
     def toggle(self):
         if self.active:
@@ -376,11 +373,9 @@ class Powerup(object):
         
 class PowerupGlow(Powerup):
     def _activate(self):
-        self.active = True
         self.parent.parent.lights[id(self.parent)] = DynLight(100,0.45)
     
     def _deactivate(self):
-        self.active = False
         del self.parent.parent.lights[id(self.parent)]
         self.parent.parent.clear_dynamic_light()
         
@@ -388,6 +383,7 @@ class PowerupGrow(Powerup):
     def _activate(self):
         self.parent.sprite.scale = self.parent.eye.scale = 2
     def _deactivate(self):
+        print "HERE"
         self.parent.sprite.scale = self.parent.eye.scale = 1
 
 class State(object):
@@ -456,16 +452,12 @@ class GameState(State):
         #gl.glEnd()
         
     
-    def update_tilebuffer(self,odd=False):
+    def update_tilebuffer(self):
         self.tilebuffer = pyglet.image.Texture.create(SCREEN_X,SCREEN_Y)
         for x in range(ROOM_X):
             for y in range(ROOM_Y):
                 square = self.room[x,y]
                 if square.material and square.material.visible and square.material.texture != None:
-                    #gl.glColor3ub(*square.material.colour)
-                    if odd and type(square) != Block:
-                        print square
-                        print x, y
                     self.tilebuffer.blit_into(square.material.texture,x*16,y*16,0)
                     
     def dynamic_light(self,lights):
