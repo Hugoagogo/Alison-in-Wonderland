@@ -30,6 +30,9 @@ EDGES.extend([(x,ROOM_Y-1) for x in range(0,ROOM_X)])
 EDGES.extend([(0,y) for y in range(0,ROOM_Y)])
 EDGES.extend([(ROOM_X-1,y) for y in range(0,ROOM_Y)])
 
+pyglet.font.add_file(os.path.join('res','teachpet.ttf'))
+NOTE_FONT = pyglet.font.load('Teachers Pet Sans Serif', 14, bold=True, italic=False)
+
 def blank():pass
 
 def load_materials(material_filename):
@@ -136,6 +139,13 @@ class Room(util.Array2D):
         self.save_state['room'] = copy.deepcopy(self.data)
         self.save_state['specials'] = copy.deepcopy(self.specials)
         
+    def reset(self):
+        self.data = self.save_state['room']
+        self.specials = self.save_state['specials']
+        self.save()
+        self.update_tilebuffer()
+        self.update_lightbatch()
+        
     def update_tilebuffer(self):
         self.tilebuffer = pyglet.image.Texture.create(SCREEN_X,SCREEN_Y)
         for x in range(ROOM_X):
@@ -219,10 +229,6 @@ class Room(util.Array2D):
                                                               ('c4B',tuple(colours)),
                                                               ('v2f',tuple(vertexes)))
         
-    def reset(self):
-        self.data = self.save_state['room']
-        self.specials = self.save_state['specials']
-        self.save()
 
 class MainWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
@@ -510,24 +516,38 @@ class GameState(State):
         
         self.player = Alison(self,250,600)
         
+        self.pause = False
+        self.text = None
+        
+        self.show_message("This is a test message")
+        
     def activate(self):
         self.parent.push_handlers(self.keys)
         pyglet.clock.schedule_interval(self.do_lights, 1/60.0)
         ##pyglet.clock.schedule_interval(lambda _:exit(), 20)
     def deactivate(self):
         self.parent.pop_handlers()
-        
+    
+    def show_message(self,message):
+        self.pause = True
+        self.text = pyglet.text.Label(message,font_name='Teachers Pet Sans Serif',font_size=10,multiline=True,width=450)
+        self.text.x = SCREEN_X/2
+        self.text.y = SCREEN_Y/2
+        self.text.anchor_x = self.text.anchor_y = "center"
+
         
     def update(self,dt):
-        self.player.update(dt)
+        if not self.pause:
+            self.player.update(dt)
     
     def do_lights(self,dt):
-        if pyglet.clock.get_fps() > 45:
+        if pyglet.clock.get_fps() > 45 and not self.pause:
             self.room.dynamic_light(self.lights.values())
             self.room.update_lightbatch()
             
     def on_key_press(self,key,modifiers):
-        self.player.press(key)
+        if not self.pause:
+            self.player.press(key)
         
         
     def on_draw(self):
@@ -538,10 +558,16 @@ class GameState(State):
 
         self.room.tilebuffer.blit(0,0)
         
-        gl.glColor4ub(*[255,255,255,255])
+        gl.glColor4ub(255,255,255,255)
         self.player.draw()
         self.room.lightbatch.draw()
         self.player.draw_eye()
+        
+        if self.pause and self.text:
+            gl.glColor4ub(50,50,50,150)
+            gl.glRect(self.text.left)
+            gl.glColour4ub(255,255,255,255)
+            self.text.draw()
         
 
 class Material(object):
