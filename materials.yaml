@@ -61,7 +61,7 @@
     special:
         type: sign
         description: This is a test sign
-        needs_activation: 1
+        needs_activation: 0
     
 V:
     name: Vial - Glow
@@ -76,6 +76,7 @@ V:
         type: vial
         type_detail: glow
         destruct: 1
+        description: "A sudden glow surrounds you"
         
 v:
     name: Vial - Grow

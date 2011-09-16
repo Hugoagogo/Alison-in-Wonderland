@@ -445,8 +445,13 @@ class Alison(object):
                     if not item.needs_activation or self.parent.keys[PLAYER_ACTIVATE]:
                         if item.type == "vial":
                             self.powerups[item.type_detail].enabled = True
+                            if item.description:
+                                self.parent.show_message(item.description,"player")
                         elif item.type == "spike":
                             self.kill_messy()
+                        elif item.type == "sign":
+                            self.parent.show_message(item.description,"sign")
+                            item.needs_activation = True
                             
                         print "Enabled: ", item.material.name
                         if remove:
@@ -524,8 +529,6 @@ class GameState(State):
         
         self.message = {}
         
-        self.show_message("This is a test message it is very long This is a test message it is very long This is a test message it is very long This is a test message it is very long This is a test message it is very long","sign")
-        
     def activate(self):
         self.parent.push_handlers(self.keys)
         pyglet.clock.schedule_interval(self.do_lights, 1/60.0)
@@ -540,13 +543,19 @@ class GameState(State):
         text.y = SCREEN_Y/2
         text.anchor_x = text.anchor_y = "center"
         self.message['text'] = text
+        
+        helper = pyglet.text.Label("Press SPACE to continue",font_size=10,width=450,height=200)
+        helper.x = SCREEN_X/2
+        helper.y = SCREEN_Y/2
+        helper.anchor_x = helper.anchor_y = "center"
+        helper.align="right"
+        helper.content_valign="bottom"
+        self.message['helper'] = helper
+        
         sprite = self.message_sprites[type]
         sprite.x = text.x-text.width/2 + 10
         sprite.y = text.y+text.height/2 + 6
         self.message['sprite'] = sprite
-        
-            
-
         
     def update(self,dt):
         if not self.pause:
@@ -560,7 +569,7 @@ class GameState(State):
     def on_key_press(self,key,modifiers):
         if not self.pause:
             self.player.press(key)
-        else:
+        elif key == pyglet.window.key.SPACE:
             self.pause = False
             self.message = {}
         
@@ -596,6 +605,7 @@ class GameState(State):
             gl.glLineWidth(1)
             gl.glColor4ub(255,255,255,255)
             self.message['text'].draw()
+            self.message['helper'].draw()
             self.message['sprite'].draw()
         
 
