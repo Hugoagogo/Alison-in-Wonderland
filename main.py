@@ -30,8 +30,9 @@ EDGES.extend([(x,ROOM_Y-1) for x in range(0,ROOM_X)])
 EDGES.extend([(0,y) for y in range(0,ROOM_Y)])
 EDGES.extend([(ROOM_X-1,y) for y in range(0,ROOM_Y)])
 
-pyglet.font.add_file(os.path.join('res','teachpet.ttf'))
-NOTE_FONT = pyglet.font.load('Teachers Pet Sans Serif', 14, bold=True, italic=False)
+pyglet.font.add_file(os.path.join('res','FIXED_V0.ttf'))
+NOTE_FONT = pyglet.font.load('fixed_v01', 14, bold=True, italic=False)
+
 
 def blank():pass
 
@@ -517,9 +518,13 @@ class GameState(State):
         self.player = Alison(self,250,600)
         
         self.pause = False
-        self.text = None
         
-        self.show_message("This is a test message")
+        self.message_sprites = {"sign":pyglet.sprite.Sprite(pyglet.image.load(os.path.join("res", "messages", "sign.png"))),
+                                "player":pyglet.sprite.Sprite(pyglet.image.load(os.path.join("res", "messages", "player.png")))}
+        
+        self.message = {}
+        
+        self.show_message("This is a test message it is very long This is a test message it is very long This is a test message it is very long This is a test message it is very long This is a test message it is very long","sign")
         
     def activate(self):
         self.parent.push_handlers(self.keys)
@@ -528,12 +533,19 @@ class GameState(State):
     def deactivate(self):
         self.parent.pop_handlers()
     
-    def show_message(self,message):
+    def show_message(self,message,type):
         self.pause = True
-        self.text = pyglet.text.Label(message,font_name='Teachers Pet Sans Serif',font_size=10,multiline=True,width=450)
-        self.text.x = SCREEN_X/2
-        self.text.y = SCREEN_Y/2
-        self.text.anchor_x = self.text.anchor_y = "center"
+        text = pyglet.text.Label(message,font_size=14,multiline=True,width=450,height=200)
+        text.x = SCREEN_X/2
+        text.y = SCREEN_Y/2
+        text.anchor_x = text.anchor_y = "center"
+        self.message['text'] = text
+        sprite = self.message_sprites[type]
+        sprite.x = text.x-text.width/2 + 10
+        sprite.y = text.y+text.height/2 + 6
+        self.message['sprite'] = sprite
+        
+            
 
         
     def update(self,dt):
@@ -548,6 +560,9 @@ class GameState(State):
     def on_key_press(self,key,modifiers):
         if not self.pause:
             self.player.press(key)
+        else:
+            self.pause = False
+            self.message = {}
         
         
     def on_draw(self):
@@ -563,11 +578,25 @@ class GameState(State):
         self.room.lightbatch.draw()
         self.player.draw_eye()
         
-        if self.pause and self.text:
+        if self.pause:
             gl.glColor4ub(50,50,50,150)
-            gl.glRect(self.text.left)
-            gl.glColour4ub(255,255,255,255)
-            self.text.draw()
+            left = self.message['text'].x-self.message['text'].width/2 -5
+            down = self.message['text'].y-self.message['text'].height/2 -5
+            right = self.message['text'].x+self.message['text'].width/2 + 5
+            up = self.message['text'].y+self.message['text'].height/2 + 5
+            gl.glRecti(left,down,right,up)
+            gl.glLineWidth(2)
+            gl.glColor4ub(200,200,200,200)
+            gl.glBegin(gl.GL_LINE_LOOP)
+            gl.glVertex2i(left,down)
+            gl.glVertex2i(left,up)
+            gl.glVertex2i(right,up)
+            gl.glVertex2i(right,down)
+            gl.glEnd()
+            gl.glLineWidth(1)
+            gl.glColor4ub(255,255,255,255)
+            self.message['text'].draw()
+            self.message['sprite'].draw()
         
 
 class Material(object):
