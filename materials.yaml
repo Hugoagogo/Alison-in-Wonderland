@@ -64,7 +64,7 @@
         needs_activation: 1
     
 V:
-    name: Vial
+    name: Vial - Glow
     visible: 1
     solid: 0
     texture: vial
@@ -78,7 +78,7 @@ V:
         destruct: 1
         
 v:
-    name: Vial
+    name: Vial - Grow
     visible: 1
     solid: 0
     texture: vial
@@ -90,3 +90,14 @@ v:
         type: vial
         type_detail: grow
         destruct: 1
+        
+^:
+    name: Spikes
+    visible: 1
+    solid: 0
+    texture: spike
+    transparent: 1
+    layer: -1
+    special:
+        type: spike
+    

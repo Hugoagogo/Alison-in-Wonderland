@@ -6,13 +6,14 @@ import os
 
 from key_bindings import *
 
+
 SCREEN_X = 960
 SCREEN_Y = 720
 
 ROOM_X = 60
 ROOM_Y = 45
 
-X_FRICTION = .7
+X_FRICTION = .5
 ACCEL = 3
 JUMP = 10
 GRAVITY = 3
@@ -27,6 +28,8 @@ EDGES.extend([(x,0) for x in range(0,ROOM_X)])
 EDGES.extend([(x,ROOM_Y-1) for x in range(0,ROOM_X)])
 EDGES.extend([(0,y) for y in range(0,ROOM_Y)])
 EDGES.extend([(ROOM_X-1,y) for y in range(0,ROOM_Y)])
+
+def blank():pass
 
 def load_materials(material_filename):
     f = open(material_filename)
@@ -210,6 +213,7 @@ class MainWindow(pyglet.window.Window):
 class Alison(object):
     def __init__(self,parent,x=0,y=0):
         frames = []
+        self.save_state = {}
         path = os.path.join("res","alison","walk")
         for file in sorted(os.listdir(path)):
             file = os.path.join(path,file)
@@ -228,13 +232,20 @@ class Alison(object):
         self.sprite = pyglet.sprite.Sprite(self.image_left,x,y)
         self.sprite.set_position(x,y)
         
+        self.messy_death = pyglet.image.load_animation(os.path.abspath(os.path.join("res","alison","messy_death.gif")))
+        for frame in self.messy_death.frames:
+            frame.image.anchor_x = frame.image.width/2
+        self.messy_death.frames[-1].duration = None
+        
         self.powerups = {'glow':PowerupGlow(self),
                          'grow':PowerupGrow(self)}
         
         self.parent = parent
         
-        self.vx = self.vy = self.cooldown_jump = self.jumping = 0
+        self.vx = self.vy = self.cooldown_jump = self.jumping = self.dead = 0
         self.dir = 1
+        
+        self.save()
     
     def _up(self):
         return self.sprite.y + self.sprite.height
@@ -253,104 +264,140 @@ class Alison(object):
         if key in PLAYER_POWERUPS:
             self.powerups[PLAYER_POWERUPS[key]].toggle()
             print "Pressed:", PLAYER_POWERUPS[key]
-
-    def update(self,dt):
-        if not self.cooldown_jump and self.parent.keys[PLAYER_JUMP]:
-            self.cooldown_jump = 1
-            self.jumping = JUMP_TIME
-        
-        if self.jumping:
-            if self.parent.keys[PLAYER_JUMP]:
-                self.vy += ACCEL*2
-                self.jumping -= 1
-            else:
-                self.jumping = 0
-                
             
-        #    self.vy += ACCEL
-        #elif self.parent.keys[PLAYER_DOWN]:
-        #    self.vy -= ACCEL
-        #else:
-        self.vy -= GRAVITY
-        if self.parent.keys[PLAYER_LEFT]:
-            if self.dir != 1:
-                self.dir = 1
-                self.sprite.image = self.image_left
-                self.eye.image = self.eye_left
-            self.vx -= ACCEL
-        elif self.parent.keys[PLAYER_RIGHT]:
-            if self.dir != 0:
-                self.dir = 0
-                self.sprite.image = self.image_right
-                self.eye.image = self.eye_right
-            self.vx += ACCEL
-        else:
-            self.vx *= X_FRICTION
+    def kill_messy(self):
+        self.dead = 1
+        self.sprite.image = self.messy_death
+        self.sprite.on_animation_end = self.reset
         
-        self.vx = util.clip_to_range(self.vx,-X_MAX_SPEED,X_MAX_SPEED)
-        self.vy = util.clip_to_range(self.vy,-Y_MAX_SPEED,Y_MAX_SPEED)
+    def reset(self):
+        self.sprite.x = self.save_state['x']
+        self.sprite.y = self.save_state['y']
+        self.sprite.image = self.image_left
+        self.dir = 0
+        self.dead = 0
+        self.sprite.on_animation_end = blank
         
-        self.sprite.x += self.vx
-        self.sprite.y += self.vy
+        for powerup in self.powerups:
+            self.powerups[powerup].enabled, self.powerups[powerup].active = self.save_state['powerup'][powerup]
         
-        ## Check Collisions Here
-        for x in range(self.parent.room.x):
-            ax = x * 16
-            for y in range(self.parent.room.y):
-                ay = y * 16
-                block = self.parent.room[x,y]
-                if block.material and block.material.solid:
-                    if self.vy < 0 and ay <= self.down < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
-                        self.sprite.y = y*16 + 16
-                        self.vy = 0
-                        self.cooldown_jump = 0
-                        #print "hity DO", self.vx
-                    elif self.vy > 0 - 2 and ay <= self.up < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
-                        self.sprite.y = y*16 - self.sprite.height -2
-                        self.vy = 0
-                        self.jumping = 0
-                        #print "hity UP"
-                    if self.vx < 0 and ax <= self.left < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
-                        self.sprite.x = x*16 + 15 + self.sprite.width/2
-                        self.vx = 0
-                        #print "hitx"
-                    elif self.vx > 0 and ax <= self.right < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
-                        self.sprite.x = x*16 - self.sprite.width/2 -1
-                        self.vx = 0
-                        #print "hitx"
+    def save(self):
+        self.save_state['x'] = self.sprite.x
+        self.save_state['y'] = self.sprite.y
+        self.save_state['powerup'] = {}
+        for powerup in self.powerups:
+            self.save_state['powerup'][powerup] = (self.powerups[powerup].enabled, self.powerups[powerup].active)
         
-        self.eye.set_position(self.sprite.x, self.sprite.y)
-        
-        if self.powerups['glow'].active:
-            self.parent.lights[id(self)].x = int(self.sprite.x/16)
-            self.parent.lights[id(self)].y = int(self.up/16)
-        refresh = False
-        for item, x, y in self.parent.room.specials:
-            dx = x*16
-            dy = y*16
-            if (dx < self.left < dx+item.material.texture.width or dx < self.right < dx+item.material.texture.width) and (dy <= self.down <= dy+item.material.texture.height or dy < self.up < dy+item.material.texture.height):
-                remove = item.destruct
-                if not item.needs_activation or self.parent.keys[PLAYER_ACTIVATE]:
-                    if item.type == "vial":
-                        self.powerups[item.type_detail].enabled = True
-                        
-                    print "Enabled: ", item.material.name
-                    if remove:
-                        refresh = True
-                        self.parent.room[x,y] = Block(None)
-                        self.parent.room.specials.remove((item, x, y))
+    def update(self,dt):
+        if not self.dead:
+            if not self.cooldown_jump and self.parent.keys[PLAYER_JUMP]:
+                self.cooldown_jump = 1
+                self.jumping = JUMP_TIME
+            
+            if self.jumping:
+                if self.parent.keys[PLAYER_JUMP]:
+                    self.vy += ACCEL*2
+                    self.jumping -= 1
+                else:
+                    self.jumping = 0
                     
-        if refresh:
-            update_lightmap(self.parent.room)
-            self.parent.update_tilebuffer()
-            self.parent.update_lightbatch()
+                
+            #    self.vy += ACCEL
+            #elif self.parent.keys[PLAYER_DOWN]:
+            #    self.vy -= ACCEL
+            #else:
+            self.vy -= GRAVITY
+            if self.parent.keys[PLAYER_LEFT]:
+                if self.dir != 1:
+                    self.dir = 1
+                    self.sprite.image = self.image_left
+                    self.eye.image = self.eye_left
+                self.vx -= ACCEL
+            elif self.parent.keys[PLAYER_RIGHT]:
+                if self.dir != 0:
+                    self.dir = 0
+                    self.sprite.image = self.image_right
+                    self.eye.image = self.eye_right
+                self.vx += ACCEL
+            else:
+                self.vx *= X_FRICTION
+            
+            self.vx = util.clip_to_range(self.vx,-X_MAX_SPEED,X_MAX_SPEED)
+            self.vy = util.clip_to_range(self.vy,-Y_MAX_SPEED,Y_MAX_SPEED)
+            
+            self.sprite.x += self.vx
+            self.sprite.y += self.vy
+            
+            ## Check Collisions Here
+            for x in range(self.parent.room.x):
+                ax = x * 16
+                for y in range(self.parent.room.y):
+                    ay = y * 16
+                    block = self.parent.room[x,y]
+                    if block.material and block.material.solid:
+                        if self.vy < 0 and ay <= self.down < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
+                            if self.down < 0:
+                                self.vy *= -1
+                            else:
+                                self.vy = 0
+                                self.sprite.y = y*16 + 16
+                            self.cooldown_jump = 0
+                            #print "hity DO", self.vx
+                        elif self.vy > 0 - 2 and ay <= self.up < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
+                            self.sprite.y = y*16 - self.sprite.height -2
+                            self.vy = 0
+                            self.jumping = 0
+                            #print "hity UP"
+                        if self.vx < 0:
+                            if ax <= self.left < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
+                                self.sprite.x = x*16 + 15 + self.sprite.width/2
+                                self.vx = 0
+                            elif self.left < 0:
+                                self.vx *= -1
+                                self.sprite.x += 16
+                        elif self.vx > 0:
+                            if ax <= self.right < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
+                                self.sprite.x = x*16 - self.sprite.width/2 -1
+                                self.vx = 0
+                            elif self.right > ROOM_X*16:
+                                self.vx *= -1
+                                self.sprite.x -= 16
+            
+            self.eye.set_position(self.sprite.x, self.sprite.y)
+            
+            if self.powerups['glow'].active:
+                self.parent.lights[id(self)].x = int(self.sprite.x/16)
+                self.parent.lights[id(self)].y = int(self.up/16)
+            refresh = False
+            for item, x, y in self.parent.room.specials:
+                dx = x*16
+                dy = y*16
+                if (dx < self.left < dx+item.material.texture.width or dx < self.right < dx+item.material.texture.width) and (dy <= self.down <= dy+item.material.texture.height or dy < self.up < dy+item.material.texture.height):
+                    remove = item.destruct
+                    if not item.needs_activation or self.parent.keys[PLAYER_ACTIVATE]:
+                        if item.type == "vial":
+                            self.powerups[item.type_detail].enabled = True
+                        elif item.type == "spike":
+                            self.kill_messy()
+                            
+                        print "Enabled: ", item.material.name
+                        if remove:
+                            refresh = True
+                            self.parent.room[x,y] = Block(None)
+                            self.parent.room.specials.remove((item, x, y))
+                        
+            if refresh:
+                update_lightmap(self.parent.room)
+                self.parent.update_tilebuffer()
+                self.parent.update_lightbatch()
                     
     
     def draw(self):
         self.sprite.draw()
         
     def draw_eye(self):
-        self.eye.draw()
+        if not self.dead:
+            self.eye.draw()
         
 class Powerup(object):
     def __init__(self,parent):
@@ -373,7 +420,7 @@ class Powerup(object):
         
 class PowerupGlow(Powerup):
     def _activate(self):
-        self.parent.parent.lights[id(self.parent)] = DynLight(100,0.45)
+        self.parent.parent.lights[id(self.parent)] = DynLight(150,0.5)
     
     def _deactivate(self):
         del self.parent.parent.lights[id(self.parent)]
@@ -383,7 +430,6 @@ class PowerupGrow(Powerup):
     def _activate(self):
         self.parent.sprite.scale = self.parent.eye.scale = 2
     def _deactivate(self):
-        print "HERE"
         self.parent.sprite.scale = self.parent.eye.scale = 1
 
 class State(object):
@@ -475,7 +521,8 @@ class GameState(State):
                         
             for x in range(ROOM_X):
                 for y in range(ROOM_Y):
-                    self.room[x,y].dyn_light = util.clip_to_range(self.room[x,y].dyn_light+self.room[x,y].base_light,0,255)-self.room[x,y].base_light
+                    block = self.room[x,y]
+                    block.dyn_light = util.clip_to_range(block.dyn_light+block.base_light,0,255)-block.base_light
     
     def clear_dynamic_light(self):
         for x in range(ROOM_X):
@@ -538,8 +585,17 @@ class DynLight(object):
         self.x = 0
         self.y = 0
         self.cooldown = 0
-        
 
 window = MainWindow()
 window.push_state(GameState())
+
+try:
+    import psyco
+    psyco.bind(update_lightmap)
+    psyco.bind(GameState.do_lights)
+    #psyco.bind(myfunction2)
+
+except ImportError:
+    pass
+
 pyglet.app.run()
