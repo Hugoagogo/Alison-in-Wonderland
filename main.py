@@ -5,6 +5,7 @@ import os
 #import profile
 
 from key_bindings import *
+import copy
 
 
 SCREEN_X = 960
@@ -164,6 +165,16 @@ class Room(util.Array2D):
                     tile = Block(mat)
                 self[colno,lineno] = tile
         self.data.reverse()
+        self.save_state = {}
+        
+    def save(self):
+        self.save_state['room'] = copy.deepcopy(self.data)
+        self.save_state['specials'] = copy.deepcopy(self.specials)
+        
+    def reset(self):
+        self.data = self.save_state['room']
+        self.specials = self.save_state['specials']
+        self.save()
 
 class MainWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
@@ -271,6 +282,7 @@ class Alison(object):
         self.sprite.on_animation_end = self.reset
         
     def reset(self):
+        self.parent.room.reset()
         self.sprite.x = self.save_state['x']
         self.sprite.y = self.save_state['y']
         self.sprite.image = self.image_left
@@ -452,6 +464,7 @@ class GameState(State):
         
         self.update_tilebuffer()
         self.update_lightbatch()
+        self.room.save()
         
     def activate(self):
         self.parent.push_handlers(self.keys)
@@ -592,6 +605,8 @@ window.push_state(GameState())
 try:
     import psyco
     psyco.bind(update_lightmap)
+    psyco.bind(check_ray2)
+    psyco.bind(check_ray)
     psyco.bind(GameState.do_lights)
     #psyco.bind(myfunction2)
 
