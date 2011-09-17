@@ -421,6 +421,7 @@ class Alison(object):
                             elif self.sprite.y < 0:
                                 self.parent.room = self.parent.rooms[self.next_room]
                                 self.sprite.y = SCREEN_Y
+                                break
                         elif self.vy > 0:
                             if ay - 2 <= self.up < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
                                 self.sprite.y = y*16 - self.sprite.height -2
@@ -428,7 +429,8 @@ class Alison(object):
                                 self.jumping = 0
                             elif self.sprite.y > SCREEN_Y:
                                 self.parent.room = self.parent.rooms[self.next_room]
-                                self.sprite.y = 0
+                                self.sprite.y = 1
+                                break
                                 
                         if self.vx < 0:
                             if ax <= self.left < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
@@ -437,20 +439,21 @@ class Alison(object):
                             elif self.left < 0:
                                 self.parent.room = self.parent.rooms[self.next_room]
                                 self.sprite.x = SCREEN_X
+                                break
                         elif self.vx > 0:
                             if ax <= self.right < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
                                 self.sprite.x = x*16 - self.sprite.width/2 -1
                                 self.vx = 0
                             elif self.right > ROOM_X*16:
                                 self.parent.room = self.parent.rooms[self.next_room]
-                                self.sprite.x = 0
+                                self.sprite.x = 1
                                 break
             
             self.eye.set_position(self.sprite.x, self.sprite.y)
             
             if self.powerups['glow'].active:
-                self.parent.lights[id(self)].x = int(self.sprite.x/16)
-                self.parent.lights[id(self)].y = int(self.up/16)
+                self.parent.lights[id(self)].x = util.clip_to_range(int(self.sprite.x/16),0,ROOM_X-1)
+                self.parent.lights[id(self)].y = util.clip_to_range(int(self.up/16),0,ROOM_Y-1)
             refresh = False
             for item, x, y in self.parent.room.specials:
                 dx = x*16

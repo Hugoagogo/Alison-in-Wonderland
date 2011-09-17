@@ -102,6 +102,26 @@ v:
     special:
         type: spike
         
+">":
+    name: Spikes
+    visible: 1
+    solid: 0
+    texture: spike2
+    transparent: 1
+    layer: -1
+    special:
+        type: spike
+        
+"<":
+    name: Spikes
+    visible: 1
+    solid: 0
+    texture: spike3
+    transparent: 1
+    layer: -1
+    special:
+        type: spike
+        
 t:
     name: Seam - Second
     visible: 0
