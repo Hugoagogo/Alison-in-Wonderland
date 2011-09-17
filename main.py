@@ -11,8 +11,8 @@ import copy
 SCREEN_X = 640
 SCREEN_Y = 480
 
-ROOM_X = 39
-ROOM_Y = 30
+ROOM_X = 40
+ROOM_Y = 29
 
 X_FRICTION = .5
 ACCEL = 3
@@ -22,8 +22,8 @@ X_MAX_SPEED = 8
 Y_MAX_SPEED = 15
 JUMP_TIME = 8
 
-#REGEN_RATE = 0.1
-REGEN_RATE = 0
+REGEN_RATE = 0.1
+#REGEN_RATE = 0
 
 range = xrange
 
@@ -169,17 +169,20 @@ class Room(util.Array2D):
         for bx in range(ROOM_X):
             for by in range(ROOM_Y):
                 block = self[bx,by]
-                if block.material != None and block.material.light:
-                    l = block.material.light
-                    block.base_light+=l
-                    for x in range(util.clip_to_range(bx-l,0,ROOM_X),util.clip_to_range(bx+l,0,ROOM_X)):
-                        for y in range(util.clip_to_range(by-l,0,ROOM_Y),util.clip_to_range(by+l,0,ROOM_Y)):
-                            if True or bx!=x or by!=y:
-                                if check_ray(bx,by,x,y,self):
-                                    try:
-                                        self[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**block.material.light_dropoff))))
-                                    except ZeroDivisionError:
-                                        pass                  
+                if block.material != None:
+                    if block.material.light:
+                        l = block.material.light
+                        block.base_light+=l
+                        for x in range(util.clip_to_range(bx-l,0,ROOM_X),util.clip_to_range(bx+l,0,ROOM_X)):
+                            for y in range(util.clip_to_range(by-l,0,ROOM_Y),util.clip_to_range(by+l,0,ROOM_Y)):
+                                if True or bx!=x or by!=y:
+                                    if check_ray(bx,by,x,y,self):
+                                        try:
+                                            self[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**block.material.light_dropoff))))
+                                        except ZeroDivisionError:
+                                            pass
+                    else:
+                        block.base_light += block.material.light_ambient
         for bx in range(ROOM_X):
             for by in range(ROOM_Y):
                 self[bx,by].base_light = util.clip_to_range(self[bx,by].base_light,0,255)
@@ -327,7 +330,7 @@ class Alison(object):
         self.jump_time = JUMP_TIME
         self.jump_speed = JUMP
         
-        self.integrity = 20
+        self.integrity = 100
         self.integrity_bar = ProgressBar(self.integrity,100,(0,SCREEN_Y-16),(SCREEN_X,SCREEN_Y))
         
         self.save()
@@ -436,7 +439,7 @@ class Alison(object):
                     block = self.parent.room[x,y]
                     if block.material and block.material.solid:
                         if self.vy < 0:
-                            if ay <= self.down < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
+                            if ay <= self.down < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.sprite.x < ax + 16 or ax+4 <= self.right < ax + 16):
                                 self.vy = 0
                                 self.sprite.y = y*16 + 16
                                 self.cooldown_jump = 0
@@ -445,7 +448,7 @@ class Alison(object):
                                 self.sprite.y = SCREEN_Y
                                 break
                         elif self.vy > 0:
-                            if ay - 2 <= self.up < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
+                            if ay - 2 <= self.up < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.sprite.x < ax + 16 or ax+4 <= self.right < ax + 16):
                                 self.sprite.y = y*16 - self.sprite.height -2
                                 self.vy = 0
                                 self.jumping = 0
@@ -455,7 +458,7 @@ class Alison(object):
                                 break
                                 
                         if self.vx < 0:
-                            if ax <= self.left < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
+                            if ax <= self.left < ax + 16 and (ay <= self.down < ay + 13 or ay <= self.down+16 < ay + 16 or ay<= self.up < ay + 16):
                                 self.sprite.x = x*16 + 15 + self.sprite.width/2
                                 self.vx = 0
                             elif self.left < 0:
@@ -463,7 +466,7 @@ class Alison(object):
                                 self.sprite.x = SCREEN_X
                                 break
                         elif self.vx > 0:
-                            if ax <= self.right < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
+                            if ax <= self.right < ax + 16 and (ay <= self.down < ay + 13  or ay <= self.down+16 < ay + 16 or ay<= self.up < ay + 16):
                                 self.sprite.x = x*16 - self.sprite.width/2 -1
                                 self.vx = 0
                             elif self.right > ROOM_X*16:
@@ -481,7 +484,7 @@ class Alison(object):
             for item, x, y in self.parent.room.specials:
                 dx = x*16
                 dy = y*16
-                if (dx < self.left < dx+item.material.texture.width or dx < self.right < dx+item.material.texture.width) and (dy <= self.down <= dy+item.material.texture.height or dy < self.up < dy+item.material.texture.height):
+                if (dx < self.left < dx+item.material.texture.width or dx < self.right < dx+item.material.texture.width) and (dy <= self.down+2 <= dy+item.material.texture.height or dy < self.up < dy+item.material.texture.height):
                     remove = item.destruct
                     if not item.needs_activation or self.parent.keys[PLAYER_ACTIVATE]:
                         if item.type == "vial":
@@ -672,7 +675,7 @@ class Blooper(object):
 class GameState(State):
     def __init__(self):
         self.rooms = load_rooms()
-        self.room = self.rooms['start']
+        self.room = self.rooms['a']
         self.bg = pyglet.image.load(os.path.abspath(os.path.join("res","backgrounds","above1.png"))).get_texture()
         self.lights = {}
         

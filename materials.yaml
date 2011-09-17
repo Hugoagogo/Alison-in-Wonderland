@@ -5,7 +5,7 @@
     colour: [180,120,80]
     texture: noise
     layer: -1
-    light_ambient: 15
+    light_ambient: 1
     
 "*":
     name: sun/moon
@@ -19,7 +19,7 @@
     light: 200
     light_dropoff: 0.2
     
-"G":
+"T":
     name: glass
     visible: 1
     solid: 1
@@ -37,6 +37,17 @@
     transparent: 1
     layer: -1
     light: 60
+    light_dropoff: 0.45
+    
+"@":
+    name: Light
+    visible: 1
+    solid: 0
+    colour: [50,240,240]
+    texture: rings
+    transparent: 1
+    layer: -1
+    light: 150
     light_dropoff: 0.45
 
 ".":
@@ -63,7 +74,7 @@
         description: This is a test sign
         needs_activation: 0
     
-V:
+G:
     name: Vial - Glow
     visible: 1
     solid: 0
@@ -78,7 +89,7 @@ V:
         destruct: 1
         description: "A sudden glow surrounds you"
         
-v:
+B:
     name: Vial - Grow
     visible: 1
     solid: 0
@@ -92,7 +103,7 @@ v:
         type_detail: grow
         destruct: 1
         
-j:
+S:
     name: Vial - StoneSkin
     visible: 1
     solid: 0
@@ -106,7 +117,7 @@ j:
         type_detail: stoneskin
         destruct: 1
         
-k:
+W:
     name: Vial - DoubleJump
     visible: 1
     solid: 0
@@ -150,23 +161,15 @@ k:
     special:
         type: spike
         
-t:
-    name: Seam - Second
-    visible: 0
-    texture: spike
+",":
+    name: Spikes
+    visible: 1
+    solid: 0
+    texture: spike4
     transparent: 1
+    layer: -1
     special:
-        type: seam
-        type_detail: second
-        
-T:
-    name: Seam - First
-    visible: 0
-    texture: spike
-    transparent: 1
-    special:
-        type: seam
-        type_detail: start
+        type: spike
         
 C:
     name: Checkpoint
@@ -175,5 +178,241 @@ C:
     special:
         type: checkpoint
         
+a:
+    name: Seam - a
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: a
+
+b:
+    name: Seam - b
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: b
+
+c:
+    name: Seam - c
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: c
+
+d:
+    name: Seam - d
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: d
+
+e:
+    name: Seam - e
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: e
+
+f:
+    name: Seam - f
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: f
+
+g:
+    name: Seam - g
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: g
+
+h:
+    name: Seam - h
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: h
+
+i:
+    name: Seam - i
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: i
+
+j:
+    name: Seam - j
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: j
+
+k:
+    name: Seam - k
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: k
+
+l:
+    name: Seam - l
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: l
+
+m:
+    name: Seam - m
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: m
+
+n:
+    name: Seam - n
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: n
+
+o:
+    name: Seam - o
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: o
+
+p:
+    name: Seam - p
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: p
+
+q:
+    name: Seam - q
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: q
+
+r:
+    name: Seam - r
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: r
+
+s:
+    name: Seam - s
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: s
+
+t:
+    name: Seam - t
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: t
+
+u:
+    name: Seam - u
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: u
+
+v:
+    name: Seam - v
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: v
+
+w:
+    name: Seam - w
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: w
+
+x:
+    name: Seam - x
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: x
+
+y:
+    name: Seam - y
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: y
+
+z:
+    name: Seam - z
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: z
+
+
+
 
     
