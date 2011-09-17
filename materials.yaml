@@ -139,4 +139,13 @@ T:
     special:
         type: seam
         type_detail: start
+        
+C:
+    name: Checkpoint
+    texture: checkpoint
+    transparent: 1
+    special:
+        type: checkpoint
+        
+
     

@@ -198,22 +198,21 @@ class Room(util.Array2D):
                         self[x,y].base_light += int(round((l/(((bx-x)**2+(by-y)**2)**block.material.light_dropoff))))
                     
     def dynamic_light(self,lights):
-        if lights:
-            self.clear_dynamic_light()
-            for light in lights:
-                block = self[light.x,light.y]
-                block.dyn_light+=light.light
-                temp = set()
-                for x, y in EDGES:
-                    if not (light.x == x and light.y == y):
-                        temp |= check_ray2(light.x,light.y,x,y,self)
-                for x, y in temp:
-                    self[x,y].dyn_light += int(round((light.light/(((light.x-x)**2+(light.y-y)**2)**light.dropoff))))
-                        
-            for x in range(ROOM_X):
-                for y in range(ROOM_Y):
-                    block = self[x,y]
-                    block.dyn_light = util.clip_to_range(block.dyn_light+block.base_light,0,255)-block.base_light
+        self.clear_dynamic_light()
+        for light in lights:
+            block = self[light.x,light.y]
+            block.dyn_light+=light.light
+            temp = set()
+            for x, y in EDGES:
+                if not (light.x == x and light.y == y):
+                    temp |= check_ray2(light.x,light.y,x,y,self)
+            for x, y in temp:
+                self[x,y].dyn_light += int(round((light.light/(((light.x-x)**2+(light.y-y)**2)**light.dropoff))))
+                    
+        for x in range(ROOM_X):
+            for y in range(ROOM_Y):
+                block = self[x,y]
+                block.dyn_light = util.clip_to_range(block.dyn_light+block.base_light,0,255)-block.base_light
     
     def clear_dynamic_light(self):
         for x in range(ROOM_X):
@@ -341,7 +340,7 @@ class Alison(object):
     def kill_messy(self):
         self.dead = 1
         self.sprite.image = self.messy_death
-        self.sprite.on_animation_end = self.reset
+        self.sprite.on_animation_end = self.parent.reset
         
     def reset(self):
         self.parent.room.reset()
@@ -353,8 +352,11 @@ class Alison(object):
         self.sprite.on_animation_end = blank
         
         for powerup in self.powerups:
-            self.powerups[powerup].deactivate()
-            self.powerups[powerup].enabled, self.powerups[powerup].active = self.save_state['powerup'][powerup]
+            if self.save_state['powerup'][powerup][1]:
+                self.powerups[powerup].activate()
+            else:
+                self.powerups[powerup].deactivate()
+            self.powerups[powerup].enabled = self.save_state['powerup'][powerup][0]
         
     def save(self):
         self.save_state['x'] = self.sprite.x
@@ -452,8 +454,9 @@ class Alison(object):
             self.eye.set_position(self.sprite.x, self.sprite.y)
             
             if self.powerups['glow'].active:
-                self.parent.lights[id(self)].x = util.clip_to_range(int(self.sprite.x/16),0,ROOM_X-1)
-                self.parent.lights[id(self)].y = util.clip_to_range(int(self.up/16),0,ROOM_Y-1)
+                if self.parent.lights[id(self)].set_pos(util.clip_to_range(int(self.sprite.x/16),0,ROOM_X-1),
+                                                        util.clip_to_range(int(self.up/16),0,ROOM_Y-1)):
+                    self.parent.lights_need_update = True
             refresh = False
             for item, x, y in self.parent.room.specials:
                 dx = x*16
@@ -472,6 +475,11 @@ class Alison(object):
                             item.needs_activation = True
                         elif item.type == "seam":
                             self.next_room = item.type_detail
+                        elif item.type == "checkpoint" and not item.cooldown:
+                            item.cooldown = True
+                            self.parent.save()
+                            item.time_reset(2)
+                            return
                             
                         print "Enabled: ", item.material.name
                         if remove:
@@ -517,7 +525,7 @@ class PowerupGlow(Powerup):
     
     def _deactivate(self):
         del self.parent.parent.lights[id(self.parent)]
-        self.parent.parent.room.clear_dynamic_light()
+        self.parent.parent.lights_need_update = True
         
 class PowerupGrow(Powerup):
     def _activate(self):
@@ -544,6 +552,8 @@ class GameState(State):
         
         self.pause = False
         
+        self.lights_need_update = True
+        
         self.message_sprites = {"sign":pyglet.sprite.Sprite(pyglet.image.load(os.path.join("res", "messages", "sign.png"))),
                                 "player":pyglet.sprite.Sprite(pyglet.image.load(os.path.join("res", "messages", "player.png")))}
         
@@ -555,6 +565,16 @@ class GameState(State):
         ##pyglet.clock.schedule_interval(lambda _:exit(), 20)
     def deactivate(self):
         self.parent.pop_handlers()
+        
+    def save(self):
+        self.player.save()
+        for room in self.rooms:
+            self.rooms[room].save()
+        
+    def reset(self):
+        self.player.reset()
+        for room in self.rooms:
+            self.rooms[room].reset()
     
     def show_message(self,message,type):
         self.pause = True
@@ -582,9 +602,10 @@ class GameState(State):
             self.player.update(dt)
     
     def do_lights(self,dt):
-        if pyglet.clock.get_fps() > 45 and not self.pause:
+        if pyglet.clock.get_fps() > 45 and self.lights_need_update and not self.pause:
             self.room.dynamic_light(self.lights.values())
             self.room.update_lightbatch()
+            self.lights_need_update = False
             
     def on_key_press(self,key,modifiers):
         if not self.pause:
@@ -661,6 +682,16 @@ class SpecialBlock(Block):
         self.description = description
         self.destruct = destruct
         self.needs_activation = needs_activation
+        self.cooldown = False
+        
+    def reset(self,something=0):
+        self.cooldown = False
+        print "ARRHH"
+        
+    def time_reset(self,time):
+        pyglet.clock.schedule_once(self.reset, time)
+        print "HARUU"
+        
     
 class DynLight(object):
     def __init__(self,light,dropoff):
@@ -669,6 +700,14 @@ class DynLight(object):
         self.x = 0
         self.y = 0
         self.cooldown = 0
+        self.changed = True
+    def set_pos(self,x,y):
+        if x != self.x or y != self.y:
+            self.x = x
+            self.y = y
+            return True
+        return False
+        
 
 window = MainWindow()
 window.push_state(GameState())
