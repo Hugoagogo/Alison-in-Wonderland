@@ -46,12 +46,16 @@ def load_materials(material_filename):
         print "Loaded Material:",key
     return materials
 
-
-                        
-          
-    for bx in range(ROOM_X):
-        for by in range(ROOM_Y):
-            room[bx,by].base_light = util.clip_to_range(room[bx,by].base_light,0,255)
+def load_rooms():
+    rooms = {}
+    path = os.path.join("map")
+    materials = load_materials("materials.yaml")
+    for file in sorted(os.listdir(path)):
+        file = os.path.join(path,file)
+        if os.path.isfile(file):
+            room = Room(file,materials)
+            rooms[room.name] = room
+    return rooms
                 
 def check_ray(x1,y1,x2,y2,room):
     #print "============================================================"
@@ -176,6 +180,7 @@ class Room(util.Array2D):
         for bx in range(ROOM_X):
             for by in range(ROOM_Y):
                 self[bx,by].base_light = util.clip_to_range(self[bx,by].base_light,0,255)
+                
                 
     def update_lightmap2(self):
         for bx in range(ROOM_X):
@@ -513,8 +518,8 @@ class State(object):
             
 class GameState(State):
     def __init__(self):
-        materials = load_materials("materials.yaml")
-        self.room = Room("level.lvl",materials)
+        self.rooms = load_rooms()
+        self.room = self.rooms['start']
         self.bg = pyglet.image.load(os.path.abspath(os.path.join("res","backgrounds","above1.png"))).get_texture()
         self.lights = {}
         
