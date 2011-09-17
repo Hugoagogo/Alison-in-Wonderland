@@ -313,6 +313,8 @@ class Alison(object):
         
         self.parent = parent
         
+        self.next_room = self.parent.room.name
+        
         self.vx = self.vy = self.cooldown_jump = self.jumping = self.dead = 0
         self.dir = 1
         
@@ -408,33 +410,41 @@ class Alison(object):
                     ay = y * 16
                     block = self.parent.room[x,y]
                     if block.material and block.material.solid:
-                        if self.vy < 0 and ay <= self.down < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
-                            if self.down < 0:
-                                self.vy *= -1
-                            else:
+                        if self.vy < 0:
+                            if ay <= self.down < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
+                                if self.down < 0:
+                                    self.vy *= -1
+                                else:
+                                    self.vy = 0
+                                    self.sprite.y = y*16 + 16
+                                self.cooldown_jump = 0
+                            elif self.sprite.y < 0:
+                                self.parent.room = self.parent.rooms[self.next_room]
+                                self.sprite.y = SCREEN_Y
+                        elif self.vy > 0:
+                            if ay - 2 <= self.up < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
+                                self.sprite.y = y*16 - self.sprite.height -2
                                 self.vy = 0
-                                self.sprite.y = y*16 + 16
-                            self.cooldown_jump = 0
-                            #print "hity DO", self.vx
-                        elif self.vy > 0 - 2 and ay <= self.up < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
-                            self.sprite.y = y*16 - self.sprite.height -2
-                            self.vy = 0
-                            self.jumping = 0
-                            #print "hity UP"
+                                self.jumping = 0
+                            elif self.sprite.y > SCREEN_Y:
+                                self.parent.room = self.parent.rooms[self.next_room]
+                                self.sprite.y = 0
+                                
                         if self.vx < 0:
                             if ax <= self.left < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
                                 self.sprite.x = x*16 + 15 + self.sprite.width/2
                                 self.vx = 0
                             elif self.left < 0:
-                                self.vx *= -1
-                                self.sprite.x += 16
+                                self.parent.room = self.parent.rooms[self.next_room]
+                                self.sprite.x = SCREEN_X
                         elif self.vx > 0:
                             if ax <= self.right < ax + 16 and (ay <= self.down < ay + 13 or ay<= self.up < ay + 16):
                                 self.sprite.x = x*16 - self.sprite.width/2 -1
                                 self.vx = 0
                             elif self.right > ROOM_X*16:
-                                self.vx *= -1
-                                self.sprite.x -= 16
+                                self.parent.room = self.parent.rooms[self.next_room]
+                                self.sprite.x = 0
+                                break
             
             self.eye.set_position(self.sprite.x, self.sprite.y)
             
@@ -457,6 +467,8 @@ class Alison(object):
                         elif item.type == "sign":
                             self.parent.show_message(item.description,"sign")
                             item.needs_activation = True
+                        elif item.type == "seam":
+                            self.next_room = item.type_detail
                             
                         print "Enabled: ", item.material.name
                         if remove:

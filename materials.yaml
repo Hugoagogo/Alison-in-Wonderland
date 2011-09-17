@@ -101,4 +101,22 @@ v:
     layer: -1
     special:
         type: spike
+        
+t:
+    name: Seam - Second
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: second
+        
+T:
+    name: Seam - First
+    visible: 0
+    texture: spike
+    transparent: 1
+    special:
+        type: seam
+        type_detail: start
     
