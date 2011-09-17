@@ -6,5 +6,7 @@ PLAYER_ACTIVATE = key.Z
 
 PLAYER_POWERUPS = {key.G:"glow",
                    key.F:"grow",
-                   key.T:"stoneskin"
+                   key.T:"stoneskin",
+                   key.D:"double_jump",
+                   
                     }

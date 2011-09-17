@@ -12,7 +12,7 @@ SCREEN_X = 960
 SCREEN_Y = 720
 
 ROOM_X = 60
-ROOM_Y = 45
+ROOM_Y = 44
 
 X_FRICTION = .5
 ACCEL = 3
@@ -21,6 +21,8 @@ GRAVITY = 3
 X_MAX_SPEED = 8
 Y_MAX_SPEED = 15
 JUMP_TIME = 8
+
+REGEN_RATE = 0.1
 
 range = xrange
 
@@ -309,7 +311,8 @@ class Alison(object):
         
         self.powerups = {'glow':PowerupGlow(self),
                          'grow':PowerupGrow(self),
-                         'stoneskin':PowerupStoneSkin(self)}
+                         'stoneskin':PowerupStoneSkin(self),
+                         'double_jump':PowerupDoubleJump(self)}
         
         self.parent = parent
         
@@ -320,6 +323,9 @@ class Alison(object):
         self.immune = False
         self.jump_time = JUMP_TIME
         self.jump_speed = JUMP
+        
+        self.integrity = 100
+        self.integrity_bar = ProgressBar(self.integrity,100,(0,SCREEN_Y-16),(SCREEN_X,SCREEN_Y))
         
         self.save()
     
@@ -340,6 +346,11 @@ class Alison(object):
         if key in PLAYER_POWERUPS:
             self.powerups[PLAYER_POWERUPS[key]].toggle()
             print "Pressed:", PLAYER_POWERUPS[key]
+        elif key == PLAYER_JUMP:
+            if self.powerups['double_jump'].active and self.vy < 5 and self.cooldown_jump:
+                self.jumping = self.jump_time
+                self.cooldown_jump = 1
+                self.integrity -= 4
             
     def kill_messy(self):
         self.dead = 1
@@ -348,6 +359,7 @@ class Alison(object):
         
     def reset(self):
         self.parent.room.reset()
+        self.integrity = self.save_state['integrity']
         self.sprite.x = self.save_state['x']
         self.sprite.y = self.save_state['y']
         self.parent.room = self.parent.rooms[self.save_state['room']]
@@ -367,6 +379,7 @@ class Alison(object):
     def save(self):
         self.save_state['x'] = self.sprite.x
         self.save_state['y'] = self.sprite.y
+        self.save_state['integrity'] = self.integrity
         self.save_state['powerup'] = {}
         self.save_state['room'] = self.parent.room.name
         for powerup in self.powerups:
@@ -495,6 +508,18 @@ class Alison(object):
                 self.parent.room.update_lightmap()
                 self.parent.room.update_tilebuffer()
                 self.parent.room.update_lightbatch()
+                
+            text = []
+            self.integrity += REGEN_RATE
+            for powerup in self.powerups.values():
+                if powerup.active:
+                    self.integrity -= powerup.cost
+                    text.append(powerup.name)
+            self.integrity_bar.set(self.integrity," | ".join(text))
+            self.integrity = util.clip_to_range(self.integrity,0,100)
+            
+            if not self.integrity:
+                self.kill_messy()
                     
     
     def draw(self):
@@ -503,6 +528,9 @@ class Alison(object):
     def draw_eye(self):
         if not self.dead:
             self.eye.draw()
+            
+    def draw_integrity(self):
+        self.integrity_bar.draw()
         
 class Powerup(object):
     def __init__(self,parent):
@@ -524,6 +552,8 @@ class Powerup(object):
             self.activate()
         
 class PowerupGlow(Powerup):
+    cost = 0.05
+    name = "Glowing Head"
     def _activate(self):
         self.parent.parent.lights[id(self.parent)] = DynLight(150,0.5)
     
@@ -532,6 +562,8 @@ class PowerupGlow(Powerup):
         self.parent.parent.lights_need_update = True
         
 class PowerupGrow(Powerup):
+    name = "Growth Enhancers"
+    cost = 0.05
     def _activate(self):
         self.parent.sprite.scale = self.parent.eye.scale = 2
         self.parent.jump_time *= 1.5
@@ -543,16 +575,53 @@ class PowerupGrow(Powerup):
         self.parent.jump_speed /= 2
         
 class PowerupStoneSkin(Powerup):
+    name = "Stone Skin"
+    cost = 0.08
     def _activate(self):
         self.parent.immune = True
     def _deactivate(self):
         self.parent.immune = False
+        
+class PowerupDoubleJump(Powerup):
+    name = "Faulty Physics"
+    cost = 0.01
+    def _activate(self):
+        pass
+    def _deactivate(self):
+        pass
 
 class State(object):
     def activate(self):
         pass
     def deactivate(self):
         pass
+    
+class ProgressBar(object):
+    def __init__(self,val,max,p1,p2):
+        self.p1 = p1
+        self.p2 = p2
+        
+        self.text = pyglet.text.Label(str(val),font_size=10,width=p2[0]-p1[0],height=p2[1]-p1[1],bold=True)
+        self.text.color = (0,0,0,255)
+        self.text.anchor_y = "bottom"
+        self.text.x = p1[0]
+        self.text.y = p1[1]
+        self.max = float(max)
+        self.set(val)
+        
+    def set(self,val,text=""):
+        self.val = val
+        self.p3 = (int((self.p2[0]-self.p1[0])*self.val/self.max)+self.p1[0],self.p2[1])
+        self.text.text = str(text)
+        
+    def draw(self):
+        gl.glColor3ub(255,30,30)
+        gl.glRecti(*(self.p1+self.p2))
+        gl.glColor3ub(150,255,45)
+        gl.glRecti(*(self.p1+self.p3))
+        #gl.glColor3ub(255,255,255)
+        self.text.draw()
+        
             
 class GameState(State):
     def __init__(self):
@@ -642,6 +711,7 @@ class GameState(State):
         self.player.draw()
         self.room.lightbatch.draw()
         self.player.draw_eye()
+        self.player.draw_integrity()
         
         if self.pause:
             gl.glColor4ub(50,50,50,150)

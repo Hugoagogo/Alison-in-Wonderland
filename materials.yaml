@@ -106,6 +106,20 @@ j:
         type_detail: stoneskin
         destruct: 1
         
+k:
+    name: Vial - DoubleJump
+    visible: 1
+    solid: 0
+    texture: vial
+    transparent: 1
+    layer: -1
+    light: 60
+    light_dropoff: 0.45
+    special:
+        type: vial
+        type_detail: double_jump
+        destruct: 1
+        
 ^:
     name: Spikes
     visible: 1
