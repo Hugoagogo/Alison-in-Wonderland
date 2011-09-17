@@ -22,7 +22,8 @@ X_MAX_SPEED = 8
 Y_MAX_SPEED = 15
 JUMP_TIME = 8
 
-REGEN_RATE = 0.1
+#REGEN_RATE = 0.1
+REGEN_RATE = 0
 
 range = xrange
 
@@ -309,6 +310,8 @@ class Alison(object):
             frame.image.anchor_x = frame.image.width/2
         self.messy_death.frames[-1].duration = None
         
+        self.blooper = Blooper(os.path.join("res","sound","warning.wav"))
+        
         self.powerups = {'glow':PowerupGlow(self),
                          'grow':PowerupGrow(self),
                          'stoneskin':PowerupStoneSkin(self),
@@ -324,7 +327,7 @@ class Alison(object):
         self.jump_time = JUMP_TIME
         self.jump_speed = JUMP
         
-        self.integrity = 100
+        self.integrity = 20
         self.integrity_bar = ProgressBar(self.integrity,100,(0,SCREEN_Y-16),(SCREEN_X,SCREEN_Y))
         
         self.save()
@@ -520,6 +523,9 @@ class Alison(object):
             
             if not self.integrity:
                 self.kill_messy()
+            
+            if self.integrity < 25:
+                self.blooper.set_rate(self.integrity/20)
                     
     
     def draw(self):
@@ -621,6 +627,37 @@ class ProgressBar(object):
         gl.glRecti(*(self.p1+self.p3))
         #gl.glColor3ub(255,255,255)
         self.text.draw()
+        
+class Blooper(object):
+    def __init__(self, file):
+        self.sound = pyglet.media.Player()
+        self.raw_sound = pyglet.media.StaticSource(pyglet.media.load(file))
+        self.sound.queue(self.raw_sound)
+        self.rate = 0
+        self.active = False
+        self.sound.on_eos = self.bloop
+    
+    def bloop(self):
+        print "HERE"
+        if self.rate:
+            pyglet.clock.schedule_once(self.go, self.rate)
+        else:
+            self.active = False
+    
+    def go(self,dt):
+        self.sound.queue(self.raw_sound)
+        self.sound.play()
+        print "EHRE"
+        
+            
+    def set_rate(self,rate):
+        if rate:
+            if not self.active:
+                self.sound.play()
+            self.active = True
+        self.rate = rate
+        
+        
         
             
 class GameState(State):
