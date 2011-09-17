@@ -346,8 +346,10 @@ class Alison(object):
         self.parent.room.reset()
         self.sprite.x = self.save_state['x']
         self.sprite.y = self.save_state['y']
+        self.parent.room = self.parent.rooms[self.save_state['room']]
         self.sprite.image = self.image_left
-        self.dir = 0
+        self.eye.image = self.eye_left
+        self.dir = 1
         self.dead = 0
         self.sprite.on_animation_end = blank
         
@@ -362,6 +364,7 @@ class Alison(object):
         self.save_state['x'] = self.sprite.x
         self.save_state['y'] = self.sprite.y
         self.save_state['powerup'] = {}
+        self.save_state['room'] = self.parent.room.name
         for powerup in self.powerups:
             self.save_state['powerup'][powerup] = (self.powerups[powerup].enabled, self.powerups[powerup].active)
         
@@ -414,11 +417,8 @@ class Alison(object):
                     if block.material and block.material.solid:
                         if self.vy < 0:
                             if ay <= self.down < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.right < ax + 16):
-                                if self.down < 0:
-                                    self.vy *= -1
-                                else:
-                                    self.vy = 0
-                                    self.sprite.y = y*16 + 16
+                                self.vy = 0
+                                self.sprite.y = y*16 + 16
                                 self.cooldown_jump = 0
                             elif self.sprite.y < 0:
                                 self.parent.room = self.parent.rooms[self.next_room]
@@ -478,14 +478,14 @@ class Alison(object):
                         elif item.type == "checkpoint" and not item.cooldown:
                             item.cooldown = True
                             self.parent.save()
-                            item.time_reset(2)
-                            return
                             
                         print "Enabled: ", item.material.name
                         if remove:
                             refresh = True
                             self.parent.room[x,y] = Block(None)
                             self.parent.room.specials.remove((item, x, y))
+                elif item.type == "checkpoint":
+                    item.cooldown = False
                         
             if refresh:
                 self.parent.room.update_lightmap()
@@ -683,14 +683,6 @@ class SpecialBlock(Block):
         self.destruct = destruct
         self.needs_activation = needs_activation
         self.cooldown = False
-        
-    def reset(self,something=0):
-        self.cooldown = False
-        print "ARRHH"
-        
-    def time_reset(self,time):
-        pyglet.clock.schedule_once(self.reset, time)
-        print "HARUU"
         
     
 class DynLight(object):
