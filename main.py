@@ -16,7 +16,7 @@ ROOM_Y = 45
 
 X_FRICTION = .5
 ACCEL = 3
-JUMP = 10
+JUMP = 6
 GRAVITY = 3
 X_MAX_SPEED = 8
 Y_MAX_SPEED = 15
@@ -308,7 +308,8 @@ class Alison(object):
         self.messy_death.frames[-1].duration = None
         
         self.powerups = {'glow':PowerupGlow(self),
-                         'grow':PowerupGrow(self)}
+                         'grow':PowerupGrow(self),
+                         'stoneskin':PowerupStoneSkin(self)}
         
         self.parent = parent
         
@@ -316,6 +317,9 @@ class Alison(object):
         
         self.vx = self.vy = self.cooldown_jump = self.jumping = self.dead = 0
         self.dir = 1
+        self.immune = False
+        self.jump_time = JUMP_TIME
+        self.jump_speed = JUMP
         
         self.save()
     
@@ -372,11 +376,11 @@ class Alison(object):
         if not self.dead:
             if not self.cooldown_jump and self.parent.keys[PLAYER_JUMP]:
                 self.cooldown_jump = 1
-                self.jumping = JUMP_TIME
+                self.jumping = self.jump_time
             
-            if self.jumping:
+            if self.jumping > 0:
                 if self.parent.keys[PLAYER_JUMP]:
-                    self.vy += ACCEL*2
+                    self.vy += self.jump_speed
                     self.jumping -= 1
                 else:
                     self.jumping = 0
@@ -468,7 +472,7 @@ class Alison(object):
                             self.powerups[item.type_detail].enabled = True
                             if item.description:
                                 self.parent.show_message(item.description,"player")
-                        elif item.type == "spike":
+                        elif item.type == "spike" and not self.immune:
                             self.kill_messy()
                         elif item.type == "sign":
                             self.parent.show_message(item.description,"sign")
@@ -530,8 +534,19 @@ class PowerupGlow(Powerup):
 class PowerupGrow(Powerup):
     def _activate(self):
         self.parent.sprite.scale = self.parent.eye.scale = 2
+        self.parent.jump_time *= 1.5
+        self.parent.jump_speed *= 2
+
     def _deactivate(self):
         self.parent.sprite.scale = self.parent.eye.scale = 1
+        self.parent.jump_time /= 1.5
+        self.parent.jump_speed /= 2
+        
+class PowerupStoneSkin(Powerup):
+    def _activate(self):
+        self.parent.immune = True
+    def _deactivate(self):
+        self.parent.immune = False
 
 class State(object):
     def activate(self):

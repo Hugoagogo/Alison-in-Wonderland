@@ -5,5 +5,6 @@ PLAYER_LEFT = key.LEFT
 PLAYER_ACTIVATE = key.Z
 
 PLAYER_POWERUPS = {key.G:"glow",
-                   key.F:"grow"
+                   key.F:"grow",
+                   key.T:"stoneskin"
                     }
