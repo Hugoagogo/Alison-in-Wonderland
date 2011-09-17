@@ -117,7 +117,8 @@ def check_ray2(x1,y1,x2,y2,room):
 
 class Room(util.Array2D):
     def __init__(self, room_filename, materials):
-        super(Room, self).__init__(ROOM_X, ROOM_Y)
+        super(Room, self).__init__(ROOM_X, ROOM_Y)        
+        
         room_file = open(room_filename,"rb")
         self.name = room_file.readline().strip()
         self.specials = []
@@ -142,6 +143,11 @@ class Room(util.Array2D):
         self.update_lightmap()
         self.update_lightbatch()
         self.save()
+        
+        if self.name == "a" or self.name == "z":
+            self.bg = pyglet.image.load(os.path.abspath(os.path.join("res","backgrounds","above1.png"))).get_texture()
+        else:
+            self.bg = pyglet.image.load(os.path.abspath(os.path.join("res","backgrounds","facility.png"))).get_texture()
         
     def save(self):
         self.save_state['room'] = copy.deepcopy(self.data)
@@ -364,10 +370,11 @@ class Alison(object):
         self.sprite.on_animation_end = self.parent.reset
         
     def reset(self):
-        self.parent.room.reset()
+        #self.parent.room.reset()
         self.integrity = self.save_state['integrity']
         self.sprite.x = self.save_state['x']
         self.sprite.y = self.save_state['y']
+        self.vx = self.vy = 0
         self.parent.room = self.parent.rooms[self.save_state['room']]
         self.sprite.image = self.image_left
         self.eye.image = self.eye_left
@@ -445,7 +452,7 @@ class Alison(object):
                                 self.cooldown_jump = 0
                             elif self.sprite.y < 0:
                                 self.parent.room = self.parent.rooms[self.next_room]
-                                self.sprite.y = SCREEN_Y
+                                self.sprite.y = SCREEN_Y-self.sprite.height
                                 break
                         elif self.vy > 0:
                             if ay - 2 <= self.up < ay + 16 and (ax <= self.left < ax + 12 or ax+4 <= self.sprite.x < ax + 16 or ax+4 <= self.right < ax + 16):
@@ -454,7 +461,7 @@ class Alison(object):
                                 self.jumping = 0
                             elif self.sprite.y > SCREEN_Y:
                                 self.parent.room = self.parent.rooms[self.next_room]
-                                self.sprite.y = 1
+                                self.sprite.y = 2
                                 break
                                 
                         if self.vx < 0:
@@ -463,7 +470,7 @@ class Alison(object):
                                 self.vx = 0
                             elif self.left < 0:
                                 self.parent.room = self.parent.rooms[self.next_room]
-                                self.sprite.x = SCREEN_X
+                                self.sprite.x = SCREEN_X-10
                                 break
                         elif self.vx > 0:
                             if ax <= self.right < ax + 16 and (ay <= self.down < ay + 13  or ay <= self.down+16 < ay + 16 or ay<= self.up < ay + 16):
@@ -471,7 +478,7 @@ class Alison(object):
                                 self.vx = 0
                             elif self.right > ROOM_X*16:
                                 self.parent.room = self.parent.rooms[self.next_room]
-                                self.sprite.x = 1
+                                self.sprite.x = 10
                                 break
             
             self.eye.set_position(self.sprite.x, self.sprite.y)
@@ -676,12 +683,11 @@ class GameState(State):
     def __init__(self):
         self.rooms = load_rooms()
         self.room = self.rooms['a']
-        self.bg = pyglet.image.load(os.path.abspath(os.path.join("res","backgrounds","above1.png"))).get_texture()
         self.lights = {}
         
         self.keys = key.KeyStateHandler()
         
-        self.player = Alison(self,250,600)
+        self.player = Alison(self,100,250)
         
         self.pause = False
         
@@ -752,7 +758,7 @@ class GameState(State):
         self.parent.set_caption(str(pyglet.clock.get_fps()))
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         gl.glColor4ub(*[255,255,255,255])
-        self.bg.blit(0,0)
+        self.room.bg.blit(0,0)
 
         self.room.tilebuffer.blit(0,0)
         

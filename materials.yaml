@@ -47,8 +47,8 @@
     texture: rings
     transparent: 1
     layer: -1
-    light: 150
-    light_dropoff: 0.45
+    light: 200
+    light_dropoff: 0.42
 
 ".":
     name: Star
