@@ -8,11 +8,11 @@ from key_bindings import *
 import copy
 
 
-SCREEN_X = 960
-SCREEN_Y = 720
+SCREEN_X = 640
+SCREEN_Y = 480
 
-ROOM_X = 60
-ROOM_Y = 44
+ROOM_X = 39
+ROOM_Y = 30
 
 X_FRICTION = .5
 ACCEL = 3
@@ -657,8 +657,17 @@ class Blooper(object):
             self.active = True
         self.rate = rate
         
-        
-        
+#class Menu(state):
+#    def __init__(self):
+#        self.items = []
+#        
+#    def add_item(self,item):
+#        self.items.append(item)
+#        
+#    def draw(self):
+#        for item in items:
+#            item.draw(x,)
+    
             
 class GameState(State):
     def __init__(self):
