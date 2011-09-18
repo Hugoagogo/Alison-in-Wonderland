@@ -33,8 +33,8 @@ EDGES.extend([(x,ROOM_Y-1) for x in range(0,ROOM_X)])
 EDGES.extend([(0,y) for y in range(0,ROOM_Y)])
 EDGES.extend([(ROOM_X-1,y) for y in range(0,ROOM_Y)])
 
-pyglet.font.add_file(os.path.join('res','FIXED_V0.ttf'))
-NOTE_FONT = pyglet.font.load('fixed_v01', 14, bold=True, italic=False)
+##pyglet.font.add_file(os.path.join('res','FIXED_V0.ttf'))
+##NOTE_FONT = pyglet.font.load('fixed_v01', 14, bold=True, italic=False)
 
 
 def blank():pass
@@ -683,7 +683,7 @@ class Blooper(object):
 class GameState(State):
     def __init__(self):
         self.rooms = load_rooms()
-        self.room = self.rooms['m']
+        self.room = self.rooms['a']
         self.lights = {}
         
         self.keys = key.KeyStateHandler()
