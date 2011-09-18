@@ -53,6 +53,7 @@ def load_rooms():
     rooms = {}
     path = os.path.join("map")
     materials = load_materials("materials.yaml")
+    print sorted(os.listdir(path))
     for file in sorted(os.listdir(path)):
         file = os.path.join(path,file)
         if os.path.isfile(file):
@@ -599,7 +600,7 @@ class PowerupStoneSkin(Powerup):
         self.parent.immune = False
         
 class PowerupDoubleJump(Powerup):
-    name = "Faulty Physics"
+    name = "Wings"
     cost = 0.01
     def _activate(self):
         pass
@@ -682,7 +683,7 @@ class Blooper(object):
 class GameState(State):
     def __init__(self):
         self.rooms = load_rooms()
-        self.room = self.rooms['a']
+        self.room = self.rooms['m']
         self.lights = {}
         
         self.keys = key.KeyStateHandler()

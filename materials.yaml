@@ -71,7 +71,7 @@
     light: 10
     special:
         type: sign
-        description: This is a test sign
+        description: "Be careful, using these make you gentically unstable, at least you can turn them on and off"
         needs_activation: 0
     
 G:
@@ -87,7 +87,7 @@ G:
         type: vial
         type_detail: glow
         destruct: 1
-        description: "A sudden glow surrounds you"
+        description: "Hey well thats strange if i scratch my head it glows. PRESS G TO SCRATCH HEAD"
         
 B:
     name: Vial - Grow
@@ -101,6 +101,7 @@ B:
     special:
         type: vial
         type_detail: grow
+        description: "Press F to use performance enhancers"
         destruct: 1
         
 S:
@@ -115,6 +116,7 @@ S:
     special:
         type: vial
         type_detail: stoneskin
+        description: "I can barely move my arms, they are all stiff and rocklike, mabey the spikes wont hurt me?, PRESS T TO ENABLE STONESKIN"
         destruct: 1
         
 W:
@@ -129,6 +131,7 @@ W:
     special:
         type: vial
         type_detail: double_jump
+        description: "Well awsome, wings never had those before, PRESS D TO ENABLE WINGS"
         destruct: 1
         
 ^:
