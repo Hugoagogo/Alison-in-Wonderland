@@ -460,9 +460,9 @@ class Alison(object):
                                 self.sprite.y = y*16 - self.sprite.height -2
                                 self.vy = 0
                                 self.jumping = 0
-                            elif self.sprite.y > SCREEN_Y:
+                            elif self.sprite.y > SCREEN_Y -16:
                                 self.parent.room = self.parent.rooms[self.next_room]
-                                self.sprite.y = 2
+                                self.sprite.y = 16
                                 break
                                 
                         if self.vx < 0:
@@ -537,6 +537,8 @@ class Alison(object):
             
             if self.integrity < 25:
                 self.blooper.set_rate(self.integrity/20)
+            else:
+                self.blooper.set_rate(0)
                     
     
     def draw(self):
