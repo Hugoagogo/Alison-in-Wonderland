@@ -293,6 +293,10 @@ class MainWindow(pyglet.window.Window):
         self.viewport.begin()
         self.states[-1].on_draw()
         self.viewport.end()
+        
+    def on_key_press(self,symbol,modifiers):
+        if symbol == FULLSCREEN_KEY:
+            self.set_fullscreen(not self.fullscreen)
             
     def update(self,dt):
         if len(self.states) and hasattr(self.states[-1],"update"):

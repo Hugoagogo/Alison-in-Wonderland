@@ -10,3 +10,5 @@ PLAYER_POWERUPS = {key.G:"glow",
                    key.D:"double_jump",
                    
                     }
+
+FULLSCREEN_KEY = key.F4
