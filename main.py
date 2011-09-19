@@ -6,6 +6,7 @@ import os
 
 from key_bindings import *
 import copy
+from fixed_resolution import FixedResolutionViewport
 
 
 SCREEN_X = 640
@@ -250,8 +251,10 @@ class Room(util.Array2D):
 
 class MainWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
-        kwargs['width'] = SCREEN_X
-        kwargs['height'] = SCREEN_Y
+        #kwargs['width'] = SCREEN_X
+        #kwargs['height'] = SCREEN_Y
+        kwargs['fullscreen'] = False
+        kwargs['resizable'] = True
         pyglet.window.Window.__init__(self, *args, **kwargs)
         self.set_exclusive_keyboard(False)
         pyglet.clock.schedule_interval(self.update, 1/60.0)
@@ -261,6 +264,9 @@ class MainWindow(pyglet.window.Window):
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
         
         self.states = []
+        
+        self.viewport = FixedResolutionViewport(self, 
+            640, 480, filtered=False)
     
     def push_state(self,state):
         state.parent = self
@@ -282,6 +288,11 @@ class MainWindow(pyglet.window.Window):
             self.states[-1].activate()
         else:
             quit()
+            
+    def on_draw(self):
+        self.viewport.begin()
+        self.states[-1].on_draw()
+        self.viewport.end()
             
     def update(self,dt):
         if len(self.states) and hasattr(self.states[-1],"update"):
