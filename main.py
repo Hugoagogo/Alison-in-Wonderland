@@ -271,23 +271,25 @@ class MainWindow(pyglet.window.Window):
     def push_state(self,state):
         state.parent = self
         if len(self.states):
-            self.pop_handlers()
             self.states[-1].deactivate()
         self.states.append(state)
         self.states[-1].activate()
-        self.push_handlers(self.states[-1])
     def pop_state(self,state=None):
-        self.pop_handlers()
         self.states[-1].deactivate()
         self.states.pop(-1)
         if state != None:
             state.parent = self
             self.states.append(state)
         if len(self.states):
-            self.push_handlers(self.states[-1])
             self.states[-1].activate()
         else:
             quit()
+            
+    def __getattr__(self,attr):
+        if hasattr(self.states[-1],attr):
+            print "here"
+            return getattr(self.states[-1],attr)
+        raise AttributeError
             
     def on_draw(self):
         self.viewport.begin()
