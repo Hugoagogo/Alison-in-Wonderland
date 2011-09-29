@@ -257,7 +257,7 @@ class MainWindow(pyglet.window.Window):
         kwargs['resizable'] = True
         pyglet.window.Window.__init__(self, *args, **kwargs)
         self.set_exclusive_keyboard(False)
-        pyglet.clock.schedule_interval(self.update, 1/60.0)
+        pyglet.clock.schedule(self.update)
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
@@ -299,6 +299,8 @@ class MainWindow(pyglet.window.Window):
     def on_key_press(self,symbol,modifiers):
         if symbol == FULLSCREEN_KEY:
             self.set_fullscreen(not self.fullscreen)
+        if len(self.states) and hasattr(self.states[-1],"on_key_press"):
+            self.states[-1].on_key_press(symbol,modifiers)
             
     def update(self,dt):
         if len(self.states) and hasattr(self.states[-1],"update"):
@@ -376,6 +378,7 @@ class Alison(object):
         if key in PLAYER_POWERUPS:
             self.powerups[PLAYER_POWERUPS[key]].toggle()
             print "Pressed:", PLAYER_POWERUPS[key]
+            print self.powerups[PLAYER_POWERUPS[key]], self.powerups[PLAYER_POWERUPS[key]].active
         elif key == PLAYER_JUMP:
             if self.powerups['double_jump'].active and self.vy < 5 and self.cooldown_jump:
                 self.jumping = self.jump_time
@@ -720,8 +723,6 @@ class GameState(State):
         
     def activate(self):
         self.parent.push_handlers(self.keys)
-        pyglet.clock.schedule_interval(self.do_lights, 1/60.0)
-        ##pyglet.clock.schedule_interval(lambda _:exit(), 20)
     def deactivate(self):
         self.parent.pop_handlers()
         
@@ -759,9 +760,10 @@ class GameState(State):
     def update(self,dt):
         if not self.pause:
             self.player.update(dt)
+            self.do_lights()
     
-    def do_lights(self,dt):
-        if pyglet.clock.get_fps() > 45 and self.lights_need_update and not self.pause:
+    def do_lights(self):
+        if pyglet.clock.get_fps() > 45 and self.lights_need_update:
             self.room.dynamic_light(self.lights.values())
             self.room.update_lightbatch()
             self.lights_need_update = False
