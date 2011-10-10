@@ -141,7 +141,7 @@ class Room(util.Array2D):
         self.data.reverse()
         self.save_state = {}
         
-        self.update_tilebuffer()
+        self.render_slow()
         self.update_lightmap()
         self.update_lightbatch()
         self.save()
@@ -159,16 +159,23 @@ class Room(util.Array2D):
         self.data = self.save_state['room']
         self.specials = self.save_state['specials']
         self.save()
-        self.update_tilebuffer()
+        self.render_slow()
         self.update_lightbatch()
-        
-    def update_tilebuffer(self):
-        self.tilebuffer = pyglet.image.Texture.create(SCREEN_X,SCREEN_Y)
+                    
+    def render_slow(self):
+        self.disp_list = gl.glGenLists(1)
+        gl.glNewList(self.disp_list, gl.GL_COMPILE)
         for x in range(ROOM_X):
             for y in range(ROOM_Y):
                 square = self[x,y]
                 if square.material and square.material.visible and square.material.texture != None:
-                    self.tilebuffer.blit_into(square.material.texture,x*16,y*16,0)
+                    gl.glColor3ub(*square.material.colour)
+                    square.material.texture.blit(x*16,y*16)
+        gl.glEndList()
+        
+    def render(self):
+        gl.glCallList(self.disp_list)
+        
                     
     def update_lightmap(self):
         for x in range(ROOM_X):
@@ -540,7 +547,7 @@ class Alison(object):
                         
             if refresh:
                 self.parent.room.update_lightmap()
-                self.parent.room.update_tilebuffer()
+                self.parent.room.render_slow()
                 self.parent.room.update_lightbatch()
                 
             text = []
@@ -782,7 +789,7 @@ class GameState(State):
         gl.glColor4ub(*[255,255,255,255])
         self.room.bg.blit(0,0)
 
-        self.room.tilebuffer.blit(0,0)
+        self.room.render()
         
         gl.glColor4ub(255,255,255,255)
         self.player.draw()
@@ -813,7 +820,7 @@ class GameState(State):
         
 
 class Material(object):
-    def __init__(self,name,visible=True,solid=False,colour=None,texture=None,transparent=False,special=None,light_ambient=0,light=0,light_dropoff=0.5,layer=-1):
+    def __init__(self,name,visible=True,solid=False,colour=[255,255,255],texture=None,transparent=False,special=None,light_ambient=0,light=0,light_dropoff=0.5,layer=-1):
         self.name = name
         self.visible=visible
         self.solid = solid
