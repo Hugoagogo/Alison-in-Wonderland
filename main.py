@@ -387,7 +387,7 @@ class Alison(object):
             print "Pressed:", PLAYER_POWERUPS[key]
             print self.powerups[PLAYER_POWERUPS[key]], self.powerups[PLAYER_POWERUPS[key]].active
         elif key == PLAYER_JUMP:
-            if self.powerups['double_jump'].active and self.vy < 5 and self.cooldown_jump:
+            if self.powerups['double_jump'].active and abs(self.vy < 4) and self.cooldown_jump:
                 self.jumping = self.jump_time
                 self.cooldown_jump = 1
                 self.integrity -= 4
